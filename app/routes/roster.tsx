@@ -149,7 +149,7 @@ function FormBlock({ form }: { form: Form }) {
       style={{ borderLeftColor: form.a, borderLeftWidth: 6 }}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge tone={FORM_TONE[form.kind]}>{FORM_NAME[form.kind]}</StatusBadge>
+        <StatusBadge tone={FORM_TONE[form.kind]}>{form.label ?? FORM_NAME[form.kind]}</StatusBadge>
         <span className="text-sm font-extrabold tracking-wide text-foreground">{form.title}</span>
       </div>
       <p className="mt-2 text-sm text-foreground-secondary">{form.blurb}</p>

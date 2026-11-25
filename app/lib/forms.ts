@@ -29,6 +29,8 @@ export type Form = {
   moves: Move[];
   /** A Story boss's phase number (2, 3 or 4); see BOSS_PHASES in bosses.ts. */
   step?: number;
+  /** Overrides the generic kind name (e.g. "Nightmare Mode") with this fighter's own, in the badge and the cutscene shout. */
+  label?: string;
 };
 
 export const FORM_NAME: Record<FormKind, string> = {
@@ -53,7 +55,7 @@ export const FORM_SHOUT: Record<FormKind, string> = {
 };
 
 /** The big title a form's cutscene shouts: a boss phase names its number. */
-export const formShout = (f: Form) => (f.kind === "phase" && f.step ? `PHASE ${f.step}` : FORM_SHOUT[f.kind]);
+export const formShout = (f: Form) => (f.kind === "phase" && f.step ? `PHASE ${f.step}` : f.label ? f.label.toUpperCase() : FORM_SHOUT[f.kind]);
 
 const M = (m: Omit<Move, "wind" | "act" | "rec"> & Partial<Pick<Move, "wind" | "act" | "rec">>): Move => ({
   wind: 0.18,
@@ -342,7 +344,7 @@ FORMS.sand = {
   ],
 };
 FORMS.plasma = {
-  power: "plasma", kind: "nightmare", title: "SUPERNOVA", ...NIGHTMARE,
+  power: "plasma", kind: "nightmare", title: "SUPERNOVA", label: "Surge Mode", ...NIGHTMARE,
   blurb: "Volta stops holding back. The plasma burns white and violet, a corona flares off every limb and each star thrown collapses into a nova.",
   body: "hsl(280 40% 10%)", glow: "hsl(0 0% 100%)", a: "hsl(285 100% 62%)", b: "hsl(190 100% 80%)", dark: "hsl(270 60% 3%)",
   dmg: 1.35, kb: 1.25, cd: 0.7, speed: 1.25, act: 1.2,
@@ -350,10 +352,19 @@ FORMS.plasma = {
     M({ id: "corona-storm", name: "Corona Storm", kind: "rain", anim: "raise", range: 600, cd: 6, dmg: 10, count: 10, radius: 200, shape: "orb", status: "burn", statusDur: 1.5, wind: 0.34, rec: 0.3 }),
     M({ id: "white-dwarf", name: "White Dwarf", kind: "projectile", anim: "raise", range: 800, minRange: 80, cd: 5, dmg: 24, speed: 380, size: 30, shape: "orb", pierce: true, kb: 520, status: "burn", statusDur: 2, wind: 0.4 }),
     M({ id: "star-collapse", name: "Star Collapse", kind: "burst", anim: "raise", range: 200, cd: 8, dmg: 22, radius: 240, kb: 620, lift: -400, status: "burn", statusDur: 2, wind: 0.45, rec: 0.35 }),
+    M({ id: "supernova-fist", name: "Supernova Fist", kind: "melee", anim: "uppercut", range: 92, cd: 1.1, dmg: 18, kb: 360, lift: -320, status: "burn", statusDur: 2 }),
+    M({ id: "twin-star-barrage", name: "Twin Star Barrage", kind: "projectile", anim: "thrust", range: 640, minRange: 80, cd: 2.2, dmg: 13, speed: 780, size: 14, count: 2, spread: 0.1, shape: "orb", pierce: true, kb: 300, status: "burn", statusDur: 1.5 }),
+    M({ id: "zenith-beam", name: "Zenith Beam", kind: "beam", anim: "thrust", range: 860, minRange: 70, cd: 4.6, dmg: 22, act: 0.4, kb: 420, status: "burn", statusDur: 2, wind: 0.4 }),
+    M({ id: "solar-rush", name: "Solar Rush", kind: "dash", anim: "lunge", range: 460, cd: 3.6, dmg: 17, dist: 460, act: 0.22, kb: 400, lift: -220, status: "burn", statusDur: 1.5 }),
+    M({ id: "singularity-step", name: "Singularity Step", kind: "blink", anim: "uppercut", range: 660, minRange: 100, cd: 3.4, dmg: 17, lift: -600, kb: 240 }),
+    M({ id: "corona-eruption", name: "Corona Eruption", kind: "eruption", anim: "slam", range: 560, minRange: 40, cd: 5.6, dmg: 16, radius: 48, count: 3, lift: -680, status: "burn", statusDur: 2, wind: 0.36 }),
+    M({ id: "ion-cyclone", name: "Ion Cyclone", kind: "zone", anim: "spin", range: 420, cd: 8.5, dmg: 8, radius: 170, dur: 4.2, pullIn: 220, status: "stun", statusDur: 0.3, wind: 0.32 }),
+    M({ id: "stellar-undertow", name: "Stellar Undertow", kind: "pull", anim: "cast", range: 520, minRange: 110, cd: 3.8, dmg: 11, status: "stun", statusDur: 0.4 }),
+    M({ id: "core-ignition", name: "Core Ignition", kind: "heal", anim: "raise", range: 2000, cd: 13, dmg: 0, heal: 28, below: 0.5, wind: 0.36, rec: 0.3 }),
   ],
 };
 FORMS.flora = {
-  power: "flora", kind: "nightmare", title: "WILD OVERGROWTH", ...NIGHTMARE,
+  power: "flora", kind: "nightmare", title: "WILD OVERGROWTH", label: "Surge Mode", ...NIGHTMARE,
   blurb: "The leaves turn black and the flowers bleed red. The floor splits under a forest of thorns, and nothing caught in it gets out.",
   body: "hsl(140 30% 8%)", glow: "hsl(350 100% 58%)", a: "hsl(140 40% 22%)", b: "hsl(350 100% 66%)", dark: "hsl(140 40% 3%)",
   dmg: 1.3, kb: 1.2, cd: 0.7, speed: 1.2, act: 1.2,
@@ -361,6 +372,15 @@ FORMS.flora = {
     M({ id: "thorn-forest", name: "Thorn Forest", kind: "eruption", anim: "slam", range: 620, minRange: 40, cd: 6.5, dmg: 14, radius: 46, count: 5, lift: -700, status: "poison", statusDur: 2, wind: 0.36 }),
     M({ id: "strangler-garden", name: "Strangler Garden", kind: "zone", anim: "slam", range: 440, cd: 9, dmg: 8, radius: 160, dur: 4.5, pullIn: 280, status: "slow", statusDur: 0.6, wind: 0.36 }),
     M({ id: "carnivore-bloom", name: "Carnivore Bloom", kind: "burst", anim: "raise", range: 180, cd: 7, dmg: 20, radius: 200, kb: 500, lift: -380, heal: 12, status: "poison", statusDur: 2, wind: 0.4, rec: 0.35 }),
+    M({ id: "bramble-fist", name: "Bramble Fist", kind: "melee", anim: "uppercut", range: 88, cd: 1, dmg: 15, kb: 300, lift: -260, status: "poison", statusDur: 1.5 }),
+    M({ id: "spore-volley", name: "Spore Volley", kind: "projectile", anim: "cast", range: 580, minRange: 80, cd: 2, dmg: 6, speed: 600, size: 10, count: 6, spread: 0.16, shape: "orb", status: "poison", statusDur: 2 }),
+    M({ id: "needle-storm", name: "Needle Storm", kind: "projectile", anim: "thrust", range: 600, minRange: 90, cd: 2.6, dmg: 9, speed: 700, size: 9, count: 4, spread: 0.14, shape: "shard", pierce: true, status: "poison", statusDur: 1.5 }),
+    M({ id: "seed-lance", name: "Seed Lance", kind: "beam", anim: "thrust", range: 640, minRange: 70, cd: 4, dmg: 19, act: 0.34, kb: 320, status: "poison", statusDur: 2, wind: 0.32 }),
+    M({ id: "root-rush", name: "Root Rush", kind: "dash", anim: "lunge", range: 440, cd: 3.6, dmg: 16, dist: 440, act: 0.22, kb: 380, lift: -200 }),
+    M({ id: "vine-step", name: "Vine Step", kind: "blink", anim: "kick", range: 640, minRange: 110, cd: 3.4, dmg: 16, kb: 320, lift: -260 }),
+    M({ id: "toxic-canopy", name: "Toxic Canopy", kind: "rain", anim: "raise", range: 580, cd: 6, dmg: 9, count: 9, radius: 190, shape: "orb", status: "poison", statusDur: 2, wind: 0.34, rec: 0.3 }),
+    M({ id: "deadfall-pull", name: "Deadfall Pull", kind: "pull", anim: "cast", range: 500, minRange: 110, cd: 3.6, dmg: 10, status: "stun", statusDur: 0.4 }),
+    M({ id: "bloodroot-bloom", name: "Bloodroot Bloom", kind: "heal", anim: "raise", range: 2000, cd: 12, dmg: 0, heal: 30, below: 0.55, wind: 0.36, rec: 0.3 }),
   ],
 };
 
