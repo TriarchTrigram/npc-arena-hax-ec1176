@@ -1,19 +1,475 @@
 {
-  "home": {
-    "title": "Hello World",
-    "cta": "Go to app"
-  },
-  "app": {
-    "greeting": "Welcome, {{name}}",
-    "signOut": "Sign out"
-  },
-  "platform": {
-    "updateNotice": {
-      "message": "A new version of this app is available.",
-      "action": "Refresh"
+  "arena": {
+    "eyebrow": "Watch the powers clash",
+    "title": "The arena",
+    "subtitle": "Pick your fighters, press Start and watch them battle it out on their own.",
+    "mode": {
+      "label": "Mode",
+      "story": "Story",
+      "duel": "Duel",
+      "ffa": "Free for all",
+      "teams": "Teams",
+      "tournament": "Tournament",
+      "teamTournament": "Team Tournament",
+      "juggernaut": "Juggernaut"
     },
-    "languageSwitcher": {
-      "label": "Language"
+    "pick": {
+      "title": "Fighters",
+      "duelHint": "Pick exactly 2 fighters.",
+      "ffaHint": "Pick 3 to 16 fighters.",
+      "count": "{{count}} picked",
+      "all": "Select all",
+      "clear": "Clear",
+      "teamsHint": "Pick at least 2 fighters for each team. Fighters join teams in the order you pick them.",
+      "tournamentHint": "Pick 3 to 16 fighters for the bracket.",
+      "lockedHint": "Picks are locked until this tournament ends.",
+      "juggHint": "Pick five challengers to face the juggernaut.",
+      "storyHint": "Pick a stage, then the pair you bring into it.",
+      "teamTourHint": "Teams of {{size}}: pick enough fighters for 3 to {{max}} full teams. Fighters join teams in the order you pick them.",
+      "teamTourLocked": "Picks are locked until this team tournament ends."
+    },
+    "controls": {
+      "start": "Start",
+      "pause": "Pause",
+      "resume": "Resume",
+      "restart": "Restart",
+      "speed": "Speed",
+      "speedAria": "Battle speed",
+      "soundAria": "Sound",
+      "mute": "Mute sound",
+      "unmute": "Turn sound on",
+      "volume": "Volume",
+      "musicAria": "Music",
+      "musicMute": "Mute music",
+      "musicUnmute": "Turn music on",
+      "musicVolume": "Music volume"
+    },
+    "status": {
+      "ready": "Ready",
+      "running": "Fighting",
+      "paused": "Paused",
+      "finished": "Finished"
+    },
+    "canvasAria": "Battle arena",
+    "alive": {
+      "title": "Still standing",
+      "empty": "The battle has not started yet.",
+      "kills": "{{count}} KOs"
+    },
+    "feed": {
+      "title": "Kill feed",
+      "emptyTitle": "No knockouts yet",
+      "emptyBody": "Knockouts show up here as they happen.",
+      "ko": "{{killer}} knocked out {{victim}}",
+      "fell": "{{victim}} went down"
+    },
+    "winner": {
+      "title": "{{name}} wins!",
+      "draw": "Nobody is left standing",
+      "again": "Fight again",
+      "team": "{{team}} team wins!",
+      "match": "{{name}} wins the match",
+      "champion": "{{name}} wins the tournament!",
+      "doubleKo": "Double K.O. This match will be replayed.",
+      "nextMatch": "Next match",
+      "rematch": "Replay match",
+      "newTournament": "New tournament",
+      "juggernaut": "{{name}} the juggernaut wins!",
+      "challengers": "The challengers win!",
+      "stageCleared": "Stage {{n}} cleared!",
+      "chapterCleared": "Chapter {{n}} complete!",
+      "stageLost": "Defeated on stage {{n}}",
+      "nextStage": "Next stage",
+      "tryAgain": "Try again",
+      "changePair": "Change pair",
+      "storyComplete": "Story complete! The Black Sun has set.",
+      "nextChapter": "Next chapter",
+      "dropped": "{{name}} drops to the losers bracket",
+      "knockedOut": "{{name}} is knocked out",
+      "resetNeeded": "{{name}} forces a reset match!",
+      "teamMatch": "{{team}} team wins the match",
+      "teamChampion": "{{team}} team wins the tournament!",
+      "teamDropped": "{{name}} team drops to the losers bracket",
+      "teamKnockedOut": "{{name}} team is knocked out",
+      "teamResetNeeded": "{{name}} team forces a reset match!"
+    },
+    "idle": "Press Start to begin the battle",
+    "teams": {
+      "countLabel": "Teams",
+      "shuffle": "Shuffle teams",
+      "name0": "Red",
+      "name1": "Blue",
+      "name2": "Gold",
+      "name3": "Green",
+      "tag": "{{team}} team",
+      "name4": "Purple",
+      "name5": "Orange",
+      "name6": "Teal",
+      "name7": "Pink"
+    },
+    "bracket": {
+      "title": "Bracket",
+      "newBracket": "New bracket",
+      "final": "Final",
+      "semis": "Semifinals",
+      "quarters": "Quarterfinals",
+      "round16": "Round of 16",
+      "bye": "Bye",
+      "tbd": "To be decided",
+      "next": "Up next",
+      "champion": "Champion",
+      "matchOf": "Match {{n}} of {{total}}",
+      "formatLabel": "Format",
+      "single": "Single elimination",
+      "double": "Double elimination",
+      "winners": "Winners bracket",
+      "losers": "Losers bracket",
+      "losersHint": "Lose once in the winners bracket and you drop down here. Lose again and you are out.",
+      "grand": "Grand final",
+      "grandHint": "The winners bracket champion meets the losers bracket champion. If the losers bracket fighter wins, a reset match decides the title.",
+      "winnersFinal": "Winners final",
+      "losersRound": "Round {{n}}",
+      "losersFinal": "Losers final",
+      "grandFinal": "Grand final",
+      "reset": "Reset match"
+    },
+    "idleTournament": "Press Start for the next match",
+    "jugg": {
+      "label": "Juggernaut",
+      "perks": "Flies on wings, has 10 moves and double health.",
+      "badge": "Boss"
+    },
+    "idleStory": "Press Start to begin stage {{n}}",
+    "hybrids": {
+      "title": "Hybrids",
+      "count": "{{count}} saved",
+      "empty": "No hybrids yet. Fuse two fighters and the hybrid shows up here, ready to pick."
+    },
+    "quest": {
+      "title": "Quest fighters",
+      "empty": "Earn quest fighters on the Quests page. Each one is strong enough to take on a Story boss alone.",
+      "link": "See quests"
+    },
+    "bosses": {
+      "title": "Bosses",
+      "count": "{{count}} of {{total}} beaten",
+      "empty": "Beat a Story boss and it joins your roster here, phases and all.",
+      "unlockEyebrow": "Boss defeated",
+      "unlockJoined": "{{name}} has joined your roster. Pick it in any mode except Story."
+    },
+    "teamTour": {
+      "sizeLabel": "Fighters per team",
+      "shuffle": "Shuffle teams",
+      "rosterTitle": "Teams",
+      "members": "{{team}} team: {{names}}"
+    }
+  },
+  "title": {
+    "eyebrow": "ONE ARENA. ENDLESS FIGHTING POTENTIAL.",
+    "tagline": "Elemental fighters clash until only one is left standing.",
+    "cta": "Choose how to fight",
+    "nowFighting": "Now fighting",
+    "versus": "vs",
+    "backAria": "Back to the title screen",
+    "modes": {
+      "story": "Seven chapters with a fused or teamed-up pair.",
+      "duel": "One on one, no distractions.",
+      "ffa": "Everyone in, free for all.",
+      "teams": "Pick sides and fight together.",
+      "tournament": "A bracket, round by round.",
+      "teamTournament": "Teams fight through a bracket together.",
+      "juggernaut": "Five challengers against one boss."
+    }
+  },
+  "nav": {},
+  "common": {
+    "arena": "Arena",
+    "fighters": "Fighters",
+    "appName": "NPC Arena",
+    "quests": "Quests"
+  },
+  "roster": {
+    "eyebrow": "The roster",
+    "title": "Meet the 16 fighters",
+    "subtitle": "Every fighter has one power and a set of moves built on it. Pick your favourites in the arena and see who is left standing.",
+    "cta": "Go to the arena",
+    "navLabel": "Main navigation",
+    "sectionAll": "All fighters",
+    "count": "{{count}} fighters",
+    "card": {
+      "power": "Power",
+      "ability": "In the arena",
+      "number": "No. {{n}}",
+      "moves": "Moves ({{count}})",
+      "hybrid": "Hybrid",
+      "form": "Form",
+      "formAt": "Below {{at}}% health",
+      "quest": "Quest fighter",
+      "boss": "Boss"
+    },
+    "forms": {
+      "title": "Forms",
+      "subtitle": "Pushed low, every fighter breaks into its form once per fight: new colours, new stats and two new moves. Hybrids and bosses don't transform.",
+      "rage": "Hits harder and moves faster.",
+      "perfected": "Pyro only, after Blue Flame.",
+      "awakened": "Slowly heals while fighting.",
+      "mastery": "Slips some hits entirely.",
+      "mystic": "Every hit drains health back.",
+      "nightmare": "Quest fighters only. Darker, stronger, three new moves."
+    },
+    "role": {
+      "attacker": "Attacker",
+      "control": "Control",
+      "tank": "Tank",
+      "support": "Support",
+      "trickster": "Trickster"
+    },
+    "filter": {
+      "label": "Show",
+      "all": "All styles"
+    },
+    "empty": {
+      "title": "No fighters with this style",
+      "body": "Pick another style to see more fighters.",
+      "action": "Show all fighters"
+    },
+    "kind": {
+      "melee": "Close strike",
+      "projectile": "Shot",
+      "beam": "Beam",
+      "burst": "Blast",
+      "dash": "Rush",
+      "eruption": "From the ground",
+      "rain": "From the sky",
+      "blink": "Teleport strike",
+      "heal": "Heal",
+      "zone": "Field",
+      "pull": "Pull",
+      "mimic": "Copy"
+    },
+    "sectionHybrids": "Hybrids",
+    "hybridCount": "{{count}} hybrids",
+    "hybridsEmpty": {
+      "title": "No hybrids yet",
+      "body": "Fuse two fighters and the hybrid joins the roster here. Hybrids you make in Story mode show up too."
+    },
+    "hybridsFiltered": "No hybrids with this style yet.",
+    "sectionBosses": "Bosses",
+    "bossCount": "{{count}} beaten",
+    "bossLocked": {
+      "title": "Not beaten yet",
+      "body": "Beat {{name}} at the end of Story chapter {{chapter}} to add it to your roster."
+    },
+    "sectionQuest": "Quest fighters",
+    "questCount": "{{count}} earned",
+    "questLocked": {
+      "title": "Not earned yet",
+      "body": "Finish its quest to add {{name}} to your roster.",
+      "action": "See quests"
+    }
+  },
+  "story": {
+    "title": "Story",
+    "chapterTitle": "Chapter 1: The Rift Opens",
+    "chapterIntro": "Bring two fighters into each stage. Fuse them into one hybrid that keeps both move sets, or send them in side by side with team attacks.",
+    "progress": "{{count}} of {{total}} stages cleared",
+    "stageNumber": "Stage {{n}}",
+    "locked": "Locked",
+    "cleared": "Cleared",
+    "boss": "Boss",
+    "pairTitle": "Your pair",
+    "first": "First fighter",
+    "second": "Second fighter",
+    "fuse": "Fuse into a hybrid",
+    "team": "Fight as a team",
+    "fuseHint": "One fighter with {{count}} moves: both move sets plus two mixed moves (in bold).",
+    "teamHint": "Both fight side by side. Each one gets a team attack that mixes your two powers:",
+    "sameHint": "The same fighter twice can only fuse.",
+    "stages": {
+      "s1": "Training Grounds",
+      "s2": "Clock Tower",
+      "s3": "Mirror Alley",
+      "s4": "Windy Rooftops",
+      "s5": "Scrapyard",
+      "s6": "Frozen Lake",
+      "s7": "Overgrown Ruins",
+      "s8": "Storm Quarry",
+      "s9": "The Rift Gate",
+      "s10": "Nullshade's Lair"
+    },
+    "chapterLabel": "Chapter {{n}}",
+    "chapterLocked": "Clear chapter {{n}} to open this one.",
+    "chaptersAria": "Chapters",
+    "ch2": {
+      "title": "Chapter 2: The Storm Coast",
+      "stages": {
+        "s1": "Tide Pools",
+        "s2": "Lighthouse",
+        "s3": "Shipwreck",
+        "s4": "Cliff Path",
+        "s5": "Sea Caves",
+        "s6": "Fog Bank",
+        "s7": "Harbour Market",
+        "s8": "Breakwater",
+        "s9": "Eye of the Storm",
+        "s10": "Maelstrom's Whirlpool"
+      }
+    },
+    "ch3": {
+      "title": "Chapter 3: The Ember Wastes",
+      "stages": {
+        "s1": "Ash Road",
+        "s2": "Glass Dunes",
+        "s3": "Sinkhole",
+        "s4": "Bone Canyon",
+        "s5": "Mirage Oasis",
+        "s6": "Lava Tubes",
+        "s7": "Burnt Orchard",
+        "s8": "Obsidian Steps",
+        "s9": "Caldera Rim",
+        "s10": "Magmaw's Furnace"
+      }
+    },
+    "ch4": {
+      "title": "Chapter 4: The Frozen Clock",
+      "stages": {
+        "s1": "Snowfield",
+        "s2": "Ice Library",
+        "s3": "Hall of Gears",
+        "s4": "Glacier Bridge",
+        "s5": "Silent Chapel",
+        "s6": "Clockwork Vault",
+        "s7": "Aurora Ridge",
+        "s8": "Frozen Throne Room",
+        "s9": "The Stopped Hour",
+        "s10": "Everwinter's Keep"
+      }
+    },
+    "ch5": {
+      "title": "Chapter 5: The Heart of the Rift",
+      "stages": {
+        "s1": "Rift Edge",
+        "s2": "Mirror Void",
+        "s3": "Gravity Well",
+        "s4": "Broken Sky",
+        "s5": "Poison Garden",
+        "s6": "Mind Spiral",
+        "s7": "Elemental Court",
+        "s8": "Hall of Echoes",
+        "s9": "The Last Gate",
+        "s10": "The Riftmaker's Core"
+      }
+    },
+    "ch6": {
+      "title": "Chapter 6: The Hollow Kingdom",
+      "stages": {
+        "s1": "Bone Road",
+        "s2": "Lantern Marsh",
+        "s3": "Crypt Gate",
+        "s4": "Weeping Bridge",
+        "s5": "The Ossuary",
+        "s6": "Ghost Market",
+        "s7": "Hall of Chains",
+        "s8": "Cathedral of Ash",
+        "s9": "The Last Vigil",
+        "s10": "The Hollow King's Throne"
+      }
+    },
+    "ch7": {
+      "title": "Chapter 7: The Dying Sun",
+      "stages": {
+        "s1": "Dusk Road",
+        "s2": "Sundial Plaza",
+        "s3": "Solar Forge",
+        "s4": "Corona Steps",
+        "s5": "Shadow Orchard",
+        "s6": "Burning Observatory",
+        "s7": "Halo Bridge",
+        "s8": "Umbra Gate",
+        "s9": "The Last Light",
+        "s10": "The Black Sun's Crown"
+      }
+    }
+  },
+  "fusion": {
+    "open": "Fuse a hybrid",
+    "title": "Fuse a hybrid",
+    "intro": "Pick two fighters. The hybrid keeps both move sets and gains two mixed moves. The same fighter twice makes a Prime hybrid of its own.",
+    "yours": "Your hybrid",
+    "moves": "{{count}} moves. Mixed moves are in bold.",
+    "from": "Fused from {{a}} and {{b}}",
+    "fromSame": "Fused from {{a}} twice",
+    "fuse": "Fuse and save",
+    "saved": "Already in your hybrids",
+    "savedNote": "{{name}} is saved. Pick it under Hybrids in the arena, or find it on the Fighters page."
+  },
+  "quests": {
+    "eyebrow": "Quests",
+    "title": "Earn new fighters",
+    "subtitle": "Every quest earns a quest fighter for good: 12 moves, its own entrance and a Nightmare Mode. Fights in any mode count, and progress is saved in this browser.",
+    "card": {
+      "number": "Quest {{n}}",
+      "claim": "Claim fighter",
+      "locked": "Finish every goal to claim",
+      "fight": "Fight as {{name}}",
+      "moves": "{{count}} moves",
+      "sealed": "This quest opens when its fighter arrives in a later update."
+    },
+    "state": {
+      "open": "In progress",
+      "ready": "Ready to claim",
+      "claimed": "Earned",
+      "sealed": "Sealed"
+    },
+    "goal": {
+      "fights": "Finish {{need}} fights in any mode",
+      "kos": "See {{need}} fighters knocked out",
+      "tournaments": "Crown a Tournament champion",
+      "bosses": "Beat a Story boss",
+      "forms": "See {{need}} forms break loose"
+    },
+    "list": {
+      "fold": {
+        "title": "A Tear in Space",
+        "reward": "Earns Parallax, Spatiokinesis",
+        "story": "Something keeps watching the arena from the other side of the air. Give it enough fights to study and it will step through."
+      },
+      "gameover": {
+        "title": "Game Over",
+        "reward": "Earns Hexizon, Indie Game Manipulation",
+        "story": "A black figure with one green eye has been glitching into the background. Prove the arena is worth playing and he'll load in."
+      },
+      "gamma": {
+        "title": "Critical Mass",
+        "reward": "Earns Halflife, Gamma Radiation",
+        "story": "Readings off the scale under the arena floor."
+      },
+      "speed": {
+        "title": "Faster Than Sound",
+        "reward": "Earns Redline, Superspeed",
+        "story": "Afterimages in the replays that nobody can explain."
+      },
+      "portal": {
+        "title": "Between Worlds",
+        "reward": "Earns Liminal, Portal and Matter Manipulation",
+        "story": "A door keeps opening where no door should be."
+      },
+      "encore": {
+        "title": "Encore",
+        "reward": "Earns Overtone, Sound Manipulation",
+        "story": "The crowd keeps cheering after the arena goes quiet, and nobody is in the stands."
+      },
+      "cranes": {
+        "title": "A Thousand Cranes",
+        "reward": "Earns Vellum, Paper Manipulation",
+        "story": "Folded paper birds turn up in the corners of the arena, a few more after every fight."
+      }
+    },
+    "cutscene": {
+      "eyebrow": "Quest complete",
+      "joined": "{{name}} has joined your roster.",
+      "close": "Done",
+      "skip": "Skip"
     }
   }
 }

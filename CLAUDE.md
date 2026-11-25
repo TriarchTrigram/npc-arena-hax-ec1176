@@ -10,16 +10,12 @@ happens, and anything chained after it still runs.
 
 ## About this app
 
-Not written yet. On this app's first build, replace this paragraph with the app's
-purpose, its main flows, and the mechanism it chose for each big job — how it
-renders, exports, sends, syncs — one plain-English line each. Ten to twenty lines,
-no code: the app builder reads this section too. Write it with your file-editing tool,
-in its own step before the build, never through a shell command. Fixed after a build has
-deployed, it is saved and goes out with the next build — never build for it alone. Keep it
-current — a turn that introduces, replaces or removes a mechanism updates this section in the
-same turn. It is a summary of the app as it is now, not a log of what each turn changed:
-rewrite it when it grows. Anything past about 16,000 characters is moved to `APP-HISTORY.md` before
-the next turn; read that file only when a task needs what an earlier turn did.
+NPC Arena is a single-player browser game where you watch power-themed NPCs fight. No sign-in, no database; all progress (quests, Story, hybrids, volume) lives in the browser's localStorage. Imported whole from the builder's earlier version (same stack), so screens, wording and rules are theirs.
+- Arena (`/`): title screen with a silent demo fight, then a canvas arena. Modes: Duel, Free for all, Teams, Tournament (single/double elimination via `lib/bracket.ts`), Team Tournament, Juggernaut, Story.
+- Engine `lib/arena-engine.ts` (physics, camera, AI, forms, entrances); cinematic layer `lib/arena-cinema.ts`; sound and music synthesised with Web Audio (`arena-sound.ts`, `arena-music.ts`).
+- Fighters are data in `lib/fighters.ts` (16 originals plus 7 quest fighters); move looks, forms, entrances and quest designs in their own lib files.
+- Story: `lib/story.ts` (7 chapters x 10 stages), bosses with 4 phases in `lib/bosses.ts` / `boss-designs.ts`; beating a chapter boss unlocks it as a fighter.
+- Fusion lab (`components/fusion-sheet.tsx`, `lib/hybrids.ts`), Fighters page (`/roster`), Quests page (`/quests`, `lib/quests.ts`, unlock cutscenes); "Fight as X" opens `/?fighter=<id>`.
 Everything below this section is Stencil's platform documentation.
 
 ## Platform-managed — don't touch
