@@ -119,7 +119,13 @@ export type Build = "small" | "regular" | "tall";
 /** Which of your powers' colours the body takes: the main colour, the glow, or black with a glowing outline. */
 export type Shade = "main" | "glow" | "dark";
 /** The character sheet. `powers` are the game's powers you picked; `own` is a power you invented, always your main one. */
-export type CustomSpec = { name: string; powers: Power[]; gear: Gear; build: Build; shade: Shade; own?: OwnPower };
+export type CustomSpec = {
+  name: string; powers: Power[]; gear: Gear; build: Build; shade: Shade; own?: OwnPower;
+  /** Health you chose; unset means the powers and build decide it. */
+  hp?: number;
+  /** How many of its moves it fights with; unset means all of them. */
+  moveCap?: number;
+};
 
 /** A power you typed in and the AI made up, with moves it designed itself (as many as it chose). */
 export type OwnPower = {
@@ -894,6 +900,10 @@ export const BUILDS: Build[] = ["small", "regular", "tall"];
 export const SHADES: Shade[] = ["main", "glow", "dark"];
 export const MAX_CUSTOM_POWERS = 3;
 export const MAX_NAME = 16;
+/** The health you can give your character. */
+export const CUSTOM_HP_MIN = 50;
+export const CUSTOM_HP_MAX = 500;
+export const CUSTOM_HP_STEP = 10;
 const ROLE_HP: Record<Role, number> = { attacker: 100, control: 100, tank: 120, support: 105, trickster: 95 };
 const BUILD_HP: Record<Build, number> = { small: -8, regular: 0, tall: 10 };
 const BUILD_SPEED: Record<Build, number> = { small: 8, regular: 0, tall: -6 };
@@ -931,6 +941,10 @@ export function cleanSpec(raw: Partial<CustomSpec> | null | undefined): CustomSp
   const powers = [...new Set((Array.isArray(raw.powers) ? raw.powers : []).filter((p): p is Power => typeof p === "string" && isPower(p)))].slice(0, MAX_CUSTOM_POWERS - (own ? 1 : 0));
   if (powers.length === 0 && !own) return null;
   const name = (typeof raw.name === "string" ? raw.name : "").replace(/\s+/g, " ").trim().slice(0, MAX_NAME);
+  const hpRaw = Number(raw.hp);
+  const hp = Number.isFinite(hpRaw) && hpRaw > 0 ? Math.min(CUSTOM_HP_MAX, Math.max(CUSTOM_HP_MIN, Math.round(hpRaw))) : undefined;
+  const capRaw = Number(raw.moveCap);
+  const moveCap = Number.isFinite(capRaw) && capRaw >= 1 ? Math.min(99, Math.round(capRaw)) : undefined;
   return {
     name,
     powers,
@@ -938,6 +952,8 @@ export function cleanSpec(raw: Partial<CustomSpec> | null | undefined): CustomSp
     build: BUILDS.includes(raw.build as Build) ? (raw.build as Build) : "regular",
     shade: SHADES.includes(raw.shade as Shade) ? (raw.shade as Shade) : "main",
     ...(own ? { own } : {}),
+    ...(hp ? { hp } : {}),
+    ...(moveCap ? { moveCap } : {}),
   };
 }
 
@@ -949,6 +965,29 @@ export function customElements(spec: CustomSpec): Power[] {
 /** How many powers a character has, an invented one included. */
 export const powerCount = (spec: CustomSpec) => spec.powers.length + (spec.own ? 1 : 0);
 
+/** Health a character gets from its powers and build when you have not chosen it. */
+export function customAutoHp(spec: CustomSpec): number {
+  const role = spec.own ? spec.own.role : DEF_BY_ID[customElements(spec)[0]].role;
+  return ROLE_HP[role] + BUILD_HP[spec.build];
+}
+
+/** Keep `cap` of a character's moves, taken in turn from each source (invented power, each picked power, signatures) so a short list still mixes them. */
+function capMoves(groups: Move[][], cap: number | undefined): Move[] {
+  const all = groups.flat();
+  if (!cap || cap >= all.length) return all;
+  const keep = new Set<string>();
+  for (let i = 0; keep.size < cap; i++) {
+    for (const g of groups) {
+      if (keep.size >= cap) break;
+      if (g[i]) keep.add(g[i].id);
+    }
+  }
+  return all.filter((m) => keep.has(m.id));
+}
+
+/** Every move a character sheet could fight with, before its ability count is applied. */
+export const customMoveTotal = (spec: CustomSpec) => customOf({ ...spec, moveCap: undefined }).moves.length;
+
 /** The fighter a character sheet makes. `fallbackName` stands in while the name is blank. */
 export function customOf(spec: CustomSpec, fallbackName = "You"): FighterDef {
   const own = spec.own;
@@ -957,9 +996,9 @@ export function customOf(spec: CustomSpec, fallbackName = "You"): FighterDef {
   const A = DEF_BY_ID[a], B = DEF_BY_ID[b];
   const count = els.length;
   const per = count === 1 ? 6 : count === 2 ? 3 : 2;
-  const picked = spec.powers.flatMap((p) => DEF_BY_ID[p].moves.slice(0, per).map((m) => (!own && p === a ? m : { ...m, power: p })));
-  // an invented power keeps every move the AI gave it
-  const moves = own ? [...ownMoves(own), ...picked] : picked;
+  const pickedGroups = spec.powers.map((p) => DEF_BY_ID[p].moves.slice(0, per).map((m) => (!own && p === a ? m : { ...m, power: p })));
+  // an invented power keeps every move the AI gave it (unless you chose to fight with fewer)
+  const groups = own ? [ownMoves(own), ...pickedGroups] : pickedGroups;
   const speed = Math.round(els.reduce((s, p) => s + DEF_BY_ID[p].speed, 0) / count) + BUILD_SPEED[spec.build];
   const names = [...(own ? [own.name] : []), ...spec.powers.map((p) => DEF_BY_ID[p].power)];
   const color = own ? own.color : A.color;
@@ -977,9 +1016,9 @@ export function customOf(spec: CustomSpec, fallbackName = "You"): FighterDef {
     glow,
     body: spec.shade === "glow" ? mainGlow : spec.shade === "dark" ? dark : undefined,
     outline: spec.shade === "dark" ? color : undefined,
-    hp: ROLE_HP[role] + BUILD_HP[spec.build],
+    hp: spec.hp ?? ROLE_HP[role] + BUILD_HP[spec.build],
     speed,
-    moves: [...moves, ...signatureMoves(a, b, own)],
+    moves: capMoves([...groups, signatureMoves(a, b, own)], spec.moveCap),
     parents: undefined,
     boss: undefined,
     custom: spec,
@@ -1022,12 +1061,14 @@ function ownPowerById(id: string): OwnPower | undefined {
 
 /** The roster id your fighter is picked by. The whole sheet rides in it (an invented power by its id), so any screen can rebuild the fighter. */
 export function customKey(spec: CustomSpec): RosterId {
-  return ["me", encodeURIComponent(spec.name), spec.powers.join("."), spec.gear, spec.build, spec.shade, ...(spec.own ? [spec.own.id] : [])].join("|");
+  // health and ability count ride after the invented power's slot (left empty when there is none)
+  const tuned = spec.hp || spec.moveCap ? [spec.own?.id ?? "", spec.hp ?? "", spec.moveCap ?? ""] : spec.own ? [spec.own.id] : [];
+  return ["me", encodeURIComponent(spec.name), spec.powers.join("."), spec.gear, spec.build, spec.shade, ...tuned].join("|");
 }
 export const isCustomKey = (id: string) => id.startsWith("me|");
 function parseCustomKey(id: string): CustomSpec | null {
   if (!isCustomKey(id)) return null;
-  const [, name, powers, gear, build, shade, ownId] = id.split("|");
+  const [, name, powers, gear, build, shade, ownId, hp, moveCap] = id.split("|");
   let decoded = "";
   try {
     decoded = decodeURIComponent(name ?? "");
@@ -1035,7 +1076,7 @@ function parseCustomKey(id: string): CustomSpec | null {
     decoded = "";
   }
   const own = ownId ? ownPowerById(ownId) : undefined;
-  return cleanSpec({ name: decoded, powers: (powers ?? "").split(".").filter(Boolean) as Power[], gear: gear as Gear, build: build as Build, shade: shade as Shade, own });
+  return cleanSpec({ name: decoded, powers: (powers ?? "").split(".").filter(Boolean) as Power[], gear: gear as Gear, build: build as Build, shade: shade as Shade, own, hp: hp ? Number(hp) : undefined, moveCap: moveCap ? Number(moveCap) : undefined });
 }
 
 // ---------- Roster ids ----------

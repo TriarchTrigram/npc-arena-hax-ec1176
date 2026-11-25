@@ -9,11 +9,13 @@ import type { StringKey } from "~stencil/types/strings";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Slider } from "~/components/ui/slider";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "~/components/ui/sheet";
 import { FighterDot } from "~/components/fighter-dot";
 import { cn } from "~/lib/utils";
 import {
-  BUILDS, DEF_BY_ID, GEARS, MAX_CUSTOM_POWERS, MAX_NAME, SHADES, cleanOwn, customOf, powerCount,
+  BUILDS, CUSTOM_HP_MAX, CUSTOM_HP_MIN, CUSTOM_HP_STEP, DEF_BY_ID, GEARS, MAX_CUSTOM_POWERS, MAX_NAME, SHADES,
+  cleanOwn, customAutoHp, customMoveTotal, customOf, powerCount,
   type CustomSpec, type FighterDef, type OwnPower, type Power, type RosterId,
 } from "~/lib/fighters";
 import { GROUND, newGame, strollPose, drawStroller, type Game } from "~/lib/arena-engine";
@@ -251,6 +253,11 @@ export function CharacterCreator({ open, onOpenChange, saved, powers, onSaved }:
     setSavedNote(null);
   };
   const ownSwatch = draft.own ? ownDot(draft.own) : null;
+  const autoHp = customAutoHp(draft);
+  const moveTotal = useMemo(() => customMoveTotal(draft), [draft]);
+  const abilities = Math.min(draft.moveCap ?? moveTotal, moveTotal);
+  const hpAria = useString("creator.tune.healthLabel");
+  const movesAria = useString("creator.tune.abilitiesLabel");
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -329,6 +336,47 @@ export function CharacterCreator({ open, onOpenChange, saved, powers, onSaved }:
                   </Choice>
                 );
               })}
+            </div>
+          </section>
+
+          <section className="flex flex-col gap-4" data-creator-tune>
+            <Heading id="creator.tune.title" hint="creator.tune.hint" />
+            <div className="flex flex-col gap-3 rounded-xl border-2 border-border bg-background p-4">
+              <div className="flex items-center gap-2">
+                <Text id="creator.tune.healthLabel" as="h4" className="text-xs font-extrabold uppercase tracking-[0.08em] text-muted-foreground" />
+                <span className="ml-auto font-semibold tabular-nums text-foreground" data-creator-hp>{draft.hp ?? autoHp}</span>
+              </div>
+              <Slider
+                min={CUSTOM_HP_MIN}
+                max={CUSTOM_HP_MAX}
+                step={CUSTOM_HP_STEP}
+                value={[draft.hp ?? autoHp]}
+                onValueChange={([v]) => set({ hp: v })}
+                aria-label={hpAria}
+              />
+              <div className="flex items-center gap-2">
+                <Text id={draft.hp ? "creator.tune.healthChosen" : "creator.tune.healthAuto"} as="p" className="text-sm text-muted-foreground" />
+                {draft.hp !== undefined && (
+                  <Button type="button" variant="ghost" size="sm" className="ml-auto shrink-0" onClick={() => set({ hp: undefined })}>
+                    <Text id="creator.tune.reset" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 rounded-xl border-2 border-border bg-background p-4">
+              <div className="flex items-center gap-2">
+                <Text id="creator.tune.abilitiesLabel" as="h4" className="text-xs font-extrabold uppercase tracking-[0.08em] text-muted-foreground" />
+                <Text id="creator.tune.abilitiesOf" vars={{ count: abilities, total: moveTotal }} className="ml-auto font-semibold tabular-nums text-foreground" />
+              </div>
+              <Slider
+                min={1}
+                max={moveTotal}
+                step={1}
+                value={[abilities]}
+                onValueChange={([v]) => set({ moveCap: v >= moveTotal ? undefined : v })}
+                aria-label={movesAria}
+              />
+              <Text id="creator.tune.abilitiesHint" as="p" className="text-sm text-muted-foreground" />
             </div>
           </section>
 

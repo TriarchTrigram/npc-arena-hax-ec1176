@@ -522,6 +522,7 @@
   },
   "free": {
     "modeName": "Free World",
+    "exit": "Back to the arena",
     "eyebrow": "Free World",
     "youTag": "YOU",
     "canvasAria": "The Free World: your party walking around, or a fight in progress",
@@ -716,6 +717,17 @@
       "trickster": "Trickster"
     },
     "movesCount": "{{count}} moves",
+    "tune": {
+      "title": "Health and abilities",
+      "hint": "Choose how tough your character is and how many of its moves it fights with.",
+      "healthLabel": "Health",
+      "healthAuto": "Set by your powers and build. Move the slider to choose your own.",
+      "healthChosen": "Chosen by you.",
+      "reset": "Use the powers' health",
+      "abilitiesLabel": "Abilities",
+      "abilitiesOf": "{{count}} of {{total}}",
+      "abilitiesHint": "Fewer abilities keeps a mix from each of your powers."
+    },
     "save": "Save character",
     "needName": "Give your character a name to save it.",
     "savedNote": "Saved. {{name}} is walking as you in Free World and can be picked in the arena.",

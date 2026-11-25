@@ -555,7 +555,7 @@ export default function Home() {
       {screen === "title" ? (
         <TitleScreen onPick={enterFromTitle} music={musicControl} />
       ) : screen === "free" ? (
-        <FreeWorld music={musicControl} />
+        <FreeWorld music={musicControl} onExit={() => setScreen("arena")} />
       ) : (
         <>
           <PageHeader

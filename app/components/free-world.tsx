@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { IconType } from "react-icons";
 import {
-  PiBuildingsBold, PiCaretLeftBold, PiCaretRightBold, PiDoorOpenBold, PiGameControllerBold, PiHandFistBold,
+  PiArrowLeftBold, PiBuildingsBold, PiCaretLeftBold, PiCaretRightBold, PiDoorOpenBold, PiGameControllerBold, PiHandFistBold,
   PiHandHeartBold, PiHouseLineBold, PiMoonStarsBold, PiPencilSimpleBold, PiSparkleBold, PiSwordBold, PiTreeBold, PiUserPlusBold, PiUsersThreeBold,
 } from "react-icons/pi";
 import { Text, useString } from "~stencil/ui/strings";
@@ -155,7 +155,7 @@ function Group({ title, children }: { title: StringKey; children: ReactNode }) {
   );
 }
 
-export function FreeWorld({ music }: { music?: ReactNode }) {
+export function FreeWorld({ music, onExit }: { music?: ReactNode; onExit?: () => void }) {
   const quests = unlockedOf(useQuests());
   const questers = quests.filter((p) => !isNewGen(p));
   const young = quests.filter(isNewGen);
@@ -500,7 +500,13 @@ export function FreeWorld({ music }: { music?: ReactNode }) {
         title={<Text id={`free.places.${place}.name` as StringKey} />}
         subtitle={<Text id={`free.places.${place}.blurb` as StringKey} />}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {onExit && (
+              <Button size="sm" variant="outline" onClick={onExit} data-free-exit>
+                <PiArrowLeftBold className="size-5" aria-hidden />
+                <Text id="free.exit" />
+              </Button>
+            )}
             {music}
             <StatusBadge tone={fighting ? "warning" : "success"}><Text id={fighting ? "free.status.fight" : "free.status.explore"} /></StatusBadge>
           </div>
