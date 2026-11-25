@@ -10,6 +10,8 @@
 // Vellum: a paper body with fold creases, a red ink seal on the brow, a long scroll trailing from the shoulders and origami cranes circling.
 // Facet: a cut gem for a head with a crown of crystals, a ridge of crystals down the back, a diamond in the chest splitting light, crystal fists.
 // Sirocco: a wrapped hood and face band with glowing eyes, a scarf that frays into sand, sand pouring from one hand and rings of sand round the legs.
+// Volta (new generation): a mane of plasma swept back, goggles pushed up, big young eyes, a star on the chest and crackling plasma fists.
+// Briar (new generation): a crown of leaves with a flower behind one ear, big young eyes, vines up the limbs and a cape of leaves.
 import type { Power } from "./fighters";
 import { drawCrane } from "./move-looks";
 import type { BossRig } from "./boss-designs";
@@ -904,6 +906,236 @@ function siroccoFront(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face
   ctx.restore();
 }
 
+// ---------- Volta (new generation) ----------
+
+/** One spike of plasma hair: a curved flame from the scalp, white at the root, its colour at the tip. */
+function plasmaSpike(ctx: CanvasRenderingContext2D, x: number, y: number, ang: number, len: number, w: number, p: QuestPaint, flick: number) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(ang);
+  const g = ctx.createLinearGradient(0, 0, len, 0);
+  g.addColorStop(0, p.nightmare ? "hsl(0 0% 100%)" : p.b);
+  g.addColorStop(1, al(p.a, 0.2));
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(0, -w);
+  ctx.quadraticCurveTo(len * 0.6, -w * 0.6 + flick, len, flick * 1.4);
+  ctx.quadraticCurveTo(len * 0.6, w * 0.6 + flick, 0, w);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function voltaBack(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: number, t: number, alive: boolean, act: QuestAct | undefined, p: QuestPaint) {
+  ctx.save();
+  const h = r.head;
+  const back = -face;
+  const flare = act && act.phase === "strike" ? 1.35 : 1;
+  ctx.globalCompositeOperation = alive ? "lighter" : "source-over";
+  // a wild mane of plasma swept back off the head
+  const spikes: [number, number, number][] = [[-0.5, 26, 5], [-0.15, 32, 5.5], [0.2, 28, 5], [0.55, 20, 4]];
+  spikes.forEach(([a, len, w], i) => {
+    const ang = back > 0 ? a : Math.PI - a;
+    const flick = alive ? Math.sin(t * 13 + i * 1.7) * 2.5 * s : 0;
+    plasmaSpike(ctx, h.x + back * 4 * s, h.y - 6 * s, ang, len * s * flare * (alive ? 1 : 0.5), w * s, p, flick);
+  });
+  if (alive) {
+    // sparks orbiting the body like a tiny solar system
+    for (let i = 0; i < 5; i++) {
+      const an = t * (2.4 + i * 0.3) + i * 1.3;
+      const cx = r.hip.x + Math.cos(an) * (24 + i * 3) * s, cy = (r.neck.y + r.hip.y) / 2 + Math.sin(an) * 30 * s;
+      if (Math.sin(an) > 0) continue;
+      glowDot(ctx, cx, cy, 4 * s, i % 2 ? p.glow : p.a, 0.9);
+    }
+  }
+  ctx.restore();
+}
+
+function voltaFront(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: number, t: number, alive: boolean, p: QuestPaint) {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const h = r.head;
+  // a band of goggles pushed up on the forehead
+  ctx.strokeStyle = p.nightmare ? "hsl(280 30% 16%)" : "hsl(250 30% 18%)";
+  ctx.lineWidth = 3 * s;
+  ctx.beginPath();
+  ctx.arc(h.x, h.y, HEAD * s, Math.PI * 1.1, Math.PI * 1.9);
+  ctx.stroke();
+  for (const dx of [-3.5, 4]) {
+    const gx = h.x + (face * dx) * s, gy = h.y - 8.5 * s;
+    ctx.fillStyle = p.nightmare ? "hsl(285 100% 62%)" : p.glow;
+    ctx.strokeStyle = "hsl(250 30% 14%)";
+    ctx.lineWidth = 1.4 * s;
+    ctx.beginPath();
+    ctx.arc(gx, gy, 3.2 * s, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+  }
+  // three short spikes of hair standing up in front
+  for (const [dx, a, len] of [[-3, -1.9, 10], [1, -1.55, 13], [5, -1.2, 9]] as const) {
+    plasmaSpike(ctx, h.x + face * dx * s, h.y - 9 * s, face > 0 ? a : Math.PI - a, len * s, 2.4 * s, p, alive ? Math.sin(t * 15 + dx) * 1.2 * s : 0);
+  }
+  // big bright young eyes
+  if (alive) {
+    for (const dx of [2, 6.5]) {
+      const ex = h.x + face * dx * s, ey = h.y + 0.5 * s;
+      ctx.fillStyle = "hsl(0 0% 100%)";
+      ctx.beginPath();
+      ctx.ellipse(ex, ey, 1.9 * s, 2.6 * s, 0, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = p.nightmare ? "hsl(285 100% 50%)" : "hsl(190 100% 40%)";
+      ctx.beginPath();
+      ctx.arc(ex + face * 0.5 * s, ey + 0.3 * s, 1.2 * s, 0, TAU);
+      ctx.fill();
+    }
+  }
+  // a four-point star on the chest
+  const cx = r.neck.x + (r.hip.x - r.neck.x) * 0.32, cy = r.neck.y + (r.hip.y - r.neck.y) * 0.32;
+  ctx.fillStyle = p.nightmare ? "hsl(0 0% 100%)" : "hsl(48 100% 72%)";
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU - Math.PI / 2, rr = (i % 2 ? 2.2 : 7) * s;
+    const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
+    if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  // fists wrapped in crackling plasma
+  if (alive) {
+    ctx.globalCompositeOperation = "lighter";
+    for (const hand of [r.hF, r.hB]) {
+      glowDot(ctx, hand.x, hand.y, 10 * s, p.a, 0.7 + 0.2 * Math.sin(t * 20));
+      ctx.strokeStyle = al(p.glow, 0.9);
+      ctx.lineWidth = 1.2 * s;
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = t * 9 + i * 2.1;
+        ctx.moveTo(hand.x, hand.y);
+        ctx.lineTo(hand.x + Math.cos(a) * 6 * s, hand.y + Math.sin(a * 1.3) * 6 * s);
+        ctx.lineTo(hand.x + Math.cos(a + 0.6) * 11 * s, hand.y + Math.sin(a + 0.9) * 10 * s);
+      }
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }
+  ctx.restore();
+}
+
+// ---------- Briar (new generation) ----------
+
+/** One leaf, pointed at both ends, from (x, y) along `ang`, with its middle vein. */
+function leaf(ctx: CanvasRenderingContext2D, x: number, y: number, ang: number, len: number, w: number, fill: string, vein: string, s: number) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(ang);
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.quadraticCurveTo(len * 0.5, -w, len, 0);
+  ctx.quadraticCurveTo(len * 0.5, w, 0, 0);
+  ctx.fill();
+  ctx.strokeStyle = vein;
+  ctx.lineWidth = 0.8 * s;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(len * 0.9, 0);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** A flower of five round petals and a bright middle. */
+function blossom(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, petal: string, middle: string, spin: number) {
+  ctx.fillStyle = petal;
+  for (let i = 0; i < 5; i++) {
+    const a = spin + (i / 5) * TAU;
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * r * 0.75, y + Math.sin(a) * r * 0.75, r * 0.6, 0, TAU);
+    ctx.fill();
+  }
+  ctx.fillStyle = middle;
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.45, 0, TAU);
+  ctx.fill();
+}
+
+function briarBack(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: number, t: number, alive: boolean, act: QuestAct | undefined, p: QuestPaint) {
+  ctx.save();
+  const back = -face;
+  const fill = p.nightmare ? "hsl(140 30% 10%)" : "hsl(118 46% 38%)";
+  const vein = p.nightmare ? al(p.glow, 0.7) : "hsl(90 60% 62%)";
+  const spread = act && act.phase === "strike" ? 1.3 : 1;
+  // a cape of big leaves hanging from the shoulders, swaying behind
+  for (let i = 0; i < 5; i++) {
+    const sway = alive ? Math.sin(t * 2.2 + i) * 0.12 : 0.5;
+    const a = Math.PI / 2 + back * (0.25 + i * 0.2) * spread + sway * back;
+    leaf(ctx, r.neck.x + back * 2 * s, r.neck.y + 2 * s, a, (34 - i * 2) * s, 8 * s, fill, vein, s);
+  }
+  if (alive) {
+    // petals drifting off behind
+    for (let i = 0; i < 4; i++) {
+      const k = (t * 0.6 + i / 4) % 1;
+      const px = r.neck.x + back * (10 + k * 40) * s, py = r.neck.y + k * 50 * s + Math.sin(t * 3 + i) * 5 * s;
+      ctx.fillStyle = al(p.glow, 0.85 * (1 - k));
+      ctx.beginPath();
+      ctx.ellipse(px, py, 2.6 * s, 1.5 * s, t * 2 + i, 0, TAU);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function briarFront(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: number, t: number, alive: boolean, p: QuestPaint) {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const h = r.head;
+  const fill = p.nightmare ? "hsl(140 30% 12%)" : "hsl(118 46% 42%)";
+  const vein = p.nightmare ? al(p.glow, 0.7) : "hsl(90 60% 66%)";
+  // a vine winding down the front arm and the front leg
+  ctx.strokeStyle = p.nightmare ? "hsl(140 30% 18%)" : "hsl(118 46% 30%)";
+  ctx.lineWidth = 2 * s;
+  for (const limb of [[r.shoulder, r.eF, r.hF], [r.hip, r.kF, r.fF]]) {
+    ctx.beginPath();
+    for (let seg = 0; seg < 2; seg++) {
+      const a = limb[seg], b = limb[seg + 1];
+      for (let i = 0; i <= 8; i++) {
+        const k = i / 8;
+        const nx = -(b.y - a.y), ny = b.x - a.x, nl = Math.hypot(nx, ny) || 1;
+        const off = Math.sin((seg + k) * 9) * 2.6 * s;
+        const x = a.x + (b.x - a.x) * k + (nx / nl) * off, y = a.y + (b.y - a.y) * k + (ny / nl) * off;
+        if (seg === 0 && i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+    }
+    ctx.stroke();
+  }
+  // a small leaf on each wrist
+  leaf(ctx, r.hF.x, r.hF.y, face > 0 ? -0.6 : Math.PI + 0.6, 10 * s, 3.5 * s, fill, vein, s);
+  leaf(ctx, r.hB.x, r.hB.y, face > 0 ? -0.9 : Math.PI + 0.9, 9 * s, 3 * s, fill, vein, s);
+  // a crown of leaves for hair
+  for (const [dx, a, len] of [[-7, -2.5, 14], [-3, -2.0, 16], [2, -1.55, 15], [6, -1.1, 13]] as const) {
+    const sway = alive ? Math.sin(t * 2.5 + dx) * 0.08 : 0;
+    leaf(ctx, h.x + face * dx * s, h.y - 7 * s, (face > 0 ? a : Math.PI - a) + sway, len * s, 4.5 * s, fill, vein, s);
+  }
+  // a big flower tucked behind one ear
+  blossom(ctx, h.x - face * 7 * s, h.y - 6 * s, 5.5 * s, p.nightmare ? "hsl(350 90% 40%)" : p.glow, p.nightmare ? "hsl(0 0% 6%)" : "hsl(52 100% 66%)", alive ? t * 0.4 : 0);
+  // big young eyes
+  if (alive) {
+    for (const dx of [2, 6.5]) {
+      const ex = h.x + face * dx * s, ey = h.y + 0.5 * s;
+      ctx.fillStyle = "hsl(0 0% 100%)";
+      ctx.beginPath();
+      ctx.ellipse(ex, ey, 1.9 * s, 2.6 * s, 0, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = p.nightmare ? "hsl(350 100% 46%)" : "hsl(100 70% 30%)";
+      ctx.beginPath();
+      ctx.arc(ex + face * 0.5 * s, ey + 0.3 * s, 1.2 * s, 0, TAU);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 export function drawQuestDesign(
   ctx: CanvasRenderingContext2D, id: Power, layer: "back" | "front", r: BossRig, s: number, face: number, t: number,
   alive: boolean, act: QuestAct | undefined, p: QuestPaint, vx = 0,
@@ -917,4 +1149,6 @@ export function drawQuestDesign(
   if (id === "paper") return layer === "back" ? vellumBack(ctx, r, s, face, t, alive, act, p) : vellumFront(ctx, r, s, face, t, alive, p);
   if (id === "crys") return layer === "back" ? facetBack(ctx, r, s, face, t, alive, act, p) : facetFront(ctx, r, s, face, t, alive, p);
   if (id === "sand") return layer === "back" ? siroccoBack(ctx, r, s, face, t, alive, act, p) : siroccoFront(ctx, r, s, face, t, alive, p);
+  if (id === "plasma") return layer === "back" ? voltaBack(ctx, r, s, face, t, alive, act, p) : voltaFront(ctx, r, s, face, t, alive, p);
+  if (id === "flora") return layer === "back" ? briarBack(ctx, r, s, face, t, alive, act, p) : briarFront(ctx, r, s, face, t, alive, p);
 }

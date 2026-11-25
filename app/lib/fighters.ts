@@ -1,11 +1,13 @@
-// The 16 fighters, the 9 quest fighters and their power moves. Shared by the arena engine and the Fighters page.
+// The 16 fighters, the 9 quest fighters, the 2 new-generation fighters and their power moves. Shared by the arena engine and the Fighters page.
 import { BOSSES, type BossId } from "./bosses";
 
 export type Power =
   | "pyro" | "cryo" | "electro" | "terra" | "aero" | "hydro" | "umbra" | "lux"
   | "gravi" | "tele" | "vita" | "toxi" | "chrono" | "magneto" | "psy" | "shift"
   // quest fighters, earned on the Quests page
-  | "spatio" | "hexizon" | "gamma" | "velo" | "portal" | "sono" | "paper" | "crys" | "sand";
+  | "spatio" | "hexizon" | "gamma" | "velo" | "portal" | "sono" | "paper" | "crys" | "sand"
+  // new generation, a chance to join after any Story boss win
+  | "plasma" | "flora";
 
 export type Role = "attacker" | "control" | "tank" | "support" | "trickster";
 
@@ -462,10 +464,52 @@ export const QUESTERS: FighterDef[] = [
       M({ id: "dune-surf", name: "Dune Surf", kind: "dash", anim: "lunge", range: 360, cd: 3.4, dmg: 13, dist: 360, act: 0.22, kb: 340, lift: -180 }),
     ],
   },
+  // ----- New generation: young fighters with a chance to join after any Story boss win (app/lib/quests.ts) -----
+  {
+    id: "plasma", name: "Volta", power: "Plasma Manipulation", role: "attacker",
+    ability: "The youngest fighter in the arena, and the one the veterans watch. Volta heats the air until it turns to plasma: star-hot fists, bolts that chain from one enemy to the next and a sun the size of a fist, thrown like a fastball.",
+    color: "hsl(322 78% 58%)", glow: "hsl(190 100% 64%)", hp: 300, speed: 128,
+    moves: [
+      M({ id: "plasma-jab", name: "Plasma Jab", kind: "melee", anim: "jab", range: 76, cd: 0.75, dmg: 11, kb: 240, status: "burn", statusDur: 1 }),
+      M({ id: "flare-kick", name: "Flare Kick", kind: "melee", anim: "kick", range: 92, cd: 1.2, dmg: 13, kb: 300, lift: -420 }),
+      M({ id: "plasma-bolt", name: "Plasma Bolt", kind: "projectile", anim: "cast", range: 600, minRange: 70, cd: 1.8, dmg: 9, speed: 820, size: 11, shape: "orb", status: "burn", statusDur: 1.5 }),
+      M({ id: "arc-chain", name: "Arc Chain", kind: "projectile", anim: "thrust", range: 560, minRange: 70, cd: 2.4, dmg: 6, speed: 900, size: 8, count: 3, spread: 0.12, shape: "orb", status: "stun", statusDur: 0.2 }),
+      M({ id: "plasma-lance", name: "Plasma Lance", kind: "beam", anim: "thrust", range: 620, minRange: 70, cd: 3, dmg: 17, act: 0.34, kb: 300, status: "burn", statusDur: 1.5, wind: 0.3 }),
+      M({ id: "star-dive", name: "Star Dive", kind: "dash", anim: "lunge", range: 380, cd: 3.2, dmg: 15, dist: 380, act: 0.2, kb: 380, lift: -200 }),
+      M({ id: "solar-pillar", name: "Solar Pillar", kind: "eruption", anim: "slam", range: 520, minRange: 40, cd: 4.4, dmg: 15, radius: 44, count: 2, lift: -660, status: "burn", statusDur: 1.5, wind: 0.3 }),
+      M({ id: "plasma-rain", name: "Plasma Rain", kind: "rain", anim: "raise", range: 540, cd: 5.5, dmg: 8, count: 8, radius: 170, shape: "orb", status: "burn", statusDur: 1, wind: 0.32 }),
+      M({ id: "ion-step", name: "Ion Step", kind: "blink", anim: "uppercut", range: 620, minRange: 100, cd: 3, dmg: 14, lift: -560, kb: 200 }),
+      M({ id: "nova-burst", name: "Nova Burst", kind: "burst", anim: "spin", range: 150, cd: 5, dmg: 16, radius: 180, kb: 520, lift: -320, status: "burn", statusDur: 1, wind: 0.26 }),
+      M({ id: "pocket-sun", name: "Pocket Sun", kind: "projectile", anim: "raise", range: 700, minRange: 90, cd: 6, dmg: 20, speed: 420, size: 24, shape: "orb", pierce: true, kb: 460, status: "burn", statusDur: 2, wind: 0.4 }),
+      M({ id: "recharge", name: "Recharge", kind: "heal", anim: "raise", range: 2000, cd: 12, dmg: 0, heal: 22, below: 0.55, wind: 0.34, rec: 0.3 }),
+    ],
+  },
+  {
+    id: "flora", name: "Briar", power: "Plant Manipulation", role: "control",
+    ability: "Barely old enough to enter the arena and already able to grow a forest in a heartbeat. Vines that grab, thorns that fly like arrows, roots that spear up through the floor and flowers big enough to bite.",
+    color: "hsl(118 46% 46%)", glow: "hsl(330 100% 72%)", hp: 310, speed: 104,
+    moves: [
+      M({ id: "thorn-jab", name: "Thorn Jab", kind: "melee", anim: "jab", range: 78, cd: 0.85, dmg: 10, kb: 230, status: "poison", statusDur: 1 }),
+      M({ id: "vine-whip", name: "Vine Whip", kind: "melee", anim: "lunge", range: 130, minRange: 30, cd: 1, dmg: 11, kb: 260 }),
+      M({ id: "thorn-volley", name: "Thorn Volley", kind: "projectile", anim: "cast", range: 560, minRange: 80, cd: 2, dmg: 5, speed: 720, size: 8, count: 5, spread: 0.18, shape: "shard", status: "poison", statusDur: 1.5 }),
+      M({ id: "seed-bomb", name: "Seed Bomb", kind: "projectile", anim: "thrust", range: 600, minRange: 90, cd: 2.8, dmg: 13, speed: 520, size: 14, shape: "orb", arc: true, kb: 280 }),
+      M({ id: "root-spear", name: "Root Spear", kind: "eruption", anim: "slam", range: 520, minRange: 40, cd: 4.2, dmg: 15, radius: 44, count: 3, lift: -640, wind: 0.3 }),
+      M({ id: "bramble-field", name: "Bramble Field", kind: "zone", anim: "slam", range: 420, minRange: 40, cd: 8, dmg: 6, radius: 130, dur: 4, pullIn: 160, status: "slow", statusDur: 0.6, wind: 0.32 }),
+      M({ id: "vine-grab", name: "Vine Grab", kind: "pull", anim: "cast", range: 480, minRange: 110, cd: 3.4, dmg: 10, status: "stun", statusDur: 0.35 }),
+      M({ id: "pollen-storm", name: "Pollen Storm", kind: "rain", anim: "raise", range: 540, cd: 5.5, dmg: 7, count: 8, radius: 170, shape: "orb", status: "blind", statusDur: 0.5, wind: 0.32 }),
+      M({ id: "sunbeam", name: "Sunbeam", kind: "beam", anim: "thrust", range: 600, minRange: 70, cd: 3.2, dmg: 16, act: 0.34, kb: 280, wind: 0.3 }),
+      M({ id: "snapjaw-bloom", name: "Snapjaw Bloom", kind: "burst", anim: "slam", range: 150, cd: 5.5, dmg: 16, radius: 160, kb: 480, lift: -320, status: "stun", statusDur: 0.3, wind: 0.3 }),
+      M({ id: "leaf-step", name: "Leaf Step", kind: "blink", anim: "kick", range: 600, minRange: 110, cd: 3.2, dmg: 13, kb: 300, lift: -240 }),
+      M({ id: "photosynthesis", name: "Photosynthesis", kind: "heal", anim: "raise", range: 2000, cd: 11, dmg: 0, heal: 26, below: 0.65, wind: 0.34, rec: 0.3 }),
+    ],
+  },
 ];
 
 export const QUEST_IDS = new Set<Power>(QUESTERS.map((q) => q.id));
 export const isQuester = (id: string) => QUEST_IDS.has(id as Power);
+/** The young new-generation fighters: listed with the quest fighters for the arena, but won by luck after a boss win, not by a quest. */
+export const NEWGEN_IDS: Power[] = ["plasma", "flora"];
+export const isNewGen = (id: string) => NEWGEN_IDS.includes(id as Power);
 
 export const DEF_BY_ID = Object.fromEntries([...FIGHTERS, ...QUESTERS].map((f) => [f.id, f])) as Record<Power, FighterDef>;
 
@@ -500,6 +544,8 @@ const WINGS: Record<Power, Wing> = {
   paper: { word: "Paper", shape: "blade", heal: 10 },
   crys: { word: "Crystal", shape: "shard", status: "slow", statusDur: 1 },
   sand: { word: "Dune", shape: "rock", status: "blind", statusDur: 0.8 },
+  plasma: { word: "Plasma", shape: "orb", status: "burn", statusDur: 1.5 },
+  flora: { word: "Thorn", shape: "shard", status: "poison", statusDur: 2, heal: 8 },
 };
 
 export function wingMoves(id: Power): Move[] {

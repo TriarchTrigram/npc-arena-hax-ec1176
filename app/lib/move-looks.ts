@@ -256,7 +256,7 @@ const FORM_LOOKS: Record<string, Look> = {
 };
 // ---------- quest fighters ----------
 // Parallax (space), Hexizon (indie games), Halflife (gamma), Redline (speed), Liminal (portals and matter), Overtone (sound), Vellum (paper),
-// Facet (crystal) and Sirocco (sand).
+// Facet (crystal), Sirocco (sand), and the new generation: Volta (plasma) and Briar (plants).
 // Their signature moves have hand-drawn looks of their own (Spatial Cut, Spatial Prison, Gaster Blaster, Bone Barrage, Bone Zone, Jumbo Roundabout,
 // Blaster Storm, Gamma Ray, Mach Rush, Ring Gate, Power Chord, Staccato, Wall of Sound, Crane Flock, Shuriken Fold, Scroll Unfurl);
 // the rest borrow a signature (`sig`) drawn in their own colours, like the form moves.
@@ -407,6 +407,38 @@ const QUEST_LOOKS: Record<string, Look> = {
   "haboob": F("miasma-cloud", "hsl(20 40% 18%)", "hsl(10 100% 58%)", "dust", false, -40, "fizz"),
   "glass-tomb": F("glacier-spike", "hsl(14 40% 30%)", "hsl(10 100% 60%)", "shard", true, 300, "shatter"),
   "sand-sea": F("tidal-wall", "hsl(20 40% 16%)", "hsl(10 100% 58%)", "dust", false, 400, "splash"),
+  // Volta (new generation)
+  "plasma-jab": F("shock-knuckle", "hsl(322 85% 62%)", "hsl(190 100% 80%)", "spark", true, 0, "fork"),
+  "flare-kick": F("gale-kick", "hsl(322 80% 60%)", "hsl(190 100% 78%)", "spark", true, -60, "flare"),
+  "plasma-bolt": F("fireball", "hsl(318 90% 60%)", "hsl(190 100% 82%)", "spark", true, -80, "flare"),
+  "arc-chain": F("ball-lightning", "hsl(190 100% 66%)", "hsl(322 100% 84%)", "bolt", true, 0, "fork"),
+  "plasma-lance": F("prism-beam", "hsl(322 90% 60%)", "hsl(190 100% 84%)", "spark", true, 0, "flare"),
+  "star-dive": F("mach-rush", "hsl(322 85% 58%)", "hsl(190 100% 80%)", "spark", true, -40, "starburst"),
+  "solar-pillar": F("flame-pillar", "hsl(318 95% 60%)", "hsl(48 100% 80%)", "ember", true, -300, "flare"),
+  "plasma-rain": F("light-lances", "hsl(322 90% 64%)", "hsl(190 100% 84%)", "spark", true, 200, "flare"),
+  "ion-step": F("warp-kick", "hsl(190 100% 62%)", "hsl(322 100% 84%)", "bolt", true, 0, "fork"),
+  "nova-burst": F("rift-burst", "hsl(322 90% 62%)", "hsl(48 100% 84%)", "star", true, 0, "starburst"),
+  "pocket-sun": F("fireball", "hsl(40 100% 62%)", "hsl(322 100% 86%)", "ember", true, -120, "starburst"),
+  "recharge": F("mend", "hsl(190 100% 64%)", "hsl(322 100% 84%)", "spark", true, -120),
+  "corona-storm": F("sunspot-rain", "hsl(285 60% 14%)", "hsl(0 0% 100%)", "star", true, 100, "starburst"),
+  "white-dwarf": F("fireball", "hsl(0 0% 100%)", "hsl(285 100% 72%)", "star", true, -80, "starburst"),
+  "star-collapse": F("total-eclipse", "hsl(285 100% 60%)", "hsl(0 0% 100%)", "star", true, 0, "starburst"),
+  // Briar (new generation)
+  "thorn-jab": F("venom-jab", "hsl(118 50% 42%)", "hsl(330 100% 76%)", "leaf", false, 200, "bite"),
+  "vine-whip": F("water-whip", "hsl(118 50% 40%)", "hsl(90 70% 62%)", "leaf", false, 200, "slash"),
+  "thorn-volley": F("ice-shard-volley", "hsl(100 45% 38%)", "hsl(330 100% 74%)", "leaf", false, 200, "bite"),
+  "seed-bomb": F("thorn-seed", "hsl(30 50% 36%)", "hsl(118 70% 60%)", "leaf", false, 260, "sprout"),
+  "root-spear": F("earth-spike", "hsl(28 45% 34%)", "hsl(118 60% 56%)", "leaf", false, 400, "sprout"),
+  "bramble-field": F("frozen-floor", "hsl(118 40% 30%)", "hsl(330 100% 70%)", "leaf", false, 0, "sprout"),
+  "vine-grab": F("magnet-pull", "hsl(118 50% 40%)", "hsl(90 70% 62%)", "leaf", false, 0, "implode"),
+  "pollen-storm": F("light-lances", "hsl(52 100% 66%)", "hsl(330 100% 80%)", "petal", false, 60, "fizz"),
+  "sunbeam": F("prism-beam", "hsl(52 100% 64%)", "hsl(90 80% 76%)", "petal", true, 0, "flare"),
+  "snapjaw-bloom": F("bloom-burst", "hsl(330 90% 62%)", "hsl(118 60% 58%)", "petal", false, 120, "bite"),
+  "leaf-step": F("shadow-step", "hsl(118 50% 46%)", "hsl(330 100% 78%)", "leaf", false, 80, "swirl"),
+  "photosynthesis": F("mend", "hsl(100 70% 56%)", "hsl(52 100% 76%)", "leaf", false, -120, "sprout"),
+  "thorn-forest": F("earth-spike", "hsl(140 30% 10%)", "hsl(350 100% 60%)", "leaf", false, 400, "bite"),
+  "strangler-garden": F("miasma-cloud", "hsl(140 30% 8%)", "hsl(350 100% 58%)", "leaf", false, -40, "implode"),
+  "carnivore-bloom": F("bloom-burst", "hsl(350 90% 40%)", "hsl(140 40% 30%)", "petal", false, 120, "bite"),
   // The Axiom, cosmic reality warping (a Story boss, kept here because every one of its moves borrows a signature)
   "galaxy-fist": F("mind-jab", "hsl(260 70% 40%)", "hsl(272 100% 84%)", "star", true, 0, "starburst"),
   "cosmic-rewrite": F("reality-warp", "hsl(272 100% 62%)", "hsl(48 100% 84%)", "star", true, 0),

@@ -1,5 +1,5 @@
 // Side-view stickman fight engine for the arena canvas. Runs entirely in the browser.
-import { DEF_BY_ID, isQuester, juggernautOf, rosterIdOf, type Anim, type BossDesign, type FighterDef, type Move, type Power, type StatusEffect } from "./fighters";
+import { DEF_BY_ID, isNewGen, isQuester, juggernautOf, rosterIdOf, type Anim, type BossDesign, type FighterDef, type Move, type Power, type StatusEffect } from "./fighters";
 import type { Sfx } from "./arena-sound";
 import { drawMarks, drawFocus, drawBars, drawNameCards, drawCutIn, MARK_LIFE, CUTIN_LEN, type Mark, type CutIn, type Focus, type NameCard } from "./arena-cinema";
 import { INTROS, BOSS_INTROS, fusionIntro, INTRO_LEN, INTRO_ARRIVED, type IntroBurst, type IntroPose, type IntroSpec } from "./spawn-intros";
@@ -122,6 +122,10 @@ const QUEST_STANCE: Partial<Record<Power, Pose>> = {
   crys: { t: 0.12, aF1: 1.05, aF2: 2.75, aB1: 0.75, aB2: 2.6, lF1: 0.6, lF2: 0.1, lB1: -0.55, lB2: -0.22 },
   // Sirocco: low and side-on, front hand trailing a stream of sand, back hand raised to the sky
   sand: { t: 0.26, aF1: 1.35, aF2: 1.1, aB1: 2.4, aB2: 2.9, lF1: 0.75, lF2: -0.05, lB1: -0.62, lB2: -0.45 },
+  // Volta: young and cocky, bouncing forward on the front foot, both fists up and crackling
+  plasma: { t: 0.18, aF1: 1.2, aF2: 2.5, aB1: 0.9, aB2: 2.3, lF1: 0.55, lF2: -0.02, lB1: -0.5, lB2: -0.35 },
+  // Briar: low and rooted, front palm open to the floor as if feeling the roots, back hand up with a seed ready
+  flora: { t: 0.2, aF1: 1.0, aF2: 0.7, aB1: 2.2, aB2: 3.1, lF1: 0.7, lF2: 0.0, lB1: -0.58, lB2: -0.3 },
 };
 const pairHash = (a: Power, b: Power) => [a, b].sort().join("+").split("").reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 /** The rest stance this fighter stands in. */
@@ -147,8 +151,9 @@ function idlePose(f: Fighter, gt: number): Pose {
   }
   if (QUEST_STANCE[f.def.id]) {
     // Parallax drifts slowly, Hexizon bobs on the balls of his feet, Halflife heaves, Redline can't stand still, Liminal sways,
-    // Overtone nods to a beat, Vellum drifts like a sheet on the air, Facet barely moves, Sirocco sways like heat haze
-    const hz = ({ hexizon: 5.5, gamma: 2.6, velo: 9, portal: 1.4, sono: 7.5, paper: 1.2, crys: 1, sand: 3.4 } as Partial<Record<Power, number>>)[f.def.id] ?? 1.8;
+    // Overtone nods to a beat, Vellum drifts like a sheet on the air, Facet barely moves, Sirocco sways like heat haze,
+    // Volta can't keep still, Briar sways like a plant in the wind
+    const hz = ({ hexizon: 5.5, gamma: 2.6, velo: 9, portal: 1.4, sono: 7.5, paper: 1.2, crys: 1, sand: 3.4, plasma: 8, flora: 1.6 } as Partial<Record<Power, number>>)[f.def.id] ?? 1.8;
     const b = Math.sin(gt * hz + f.key);
     return { ...st, t: st.t + b * 0.03, aF2: st.aF2 + b * 0.06, aB2: st.aB2 + b * 0.06, lF1: st.lF1 + b * 0.04, lB1: st.lB1 - b * 0.04 };
   }
@@ -258,6 +263,8 @@ const FX: Record<Power, { shape: PShape; add: boolean; grav: number }> = {
   paper: { shape: "leaf", add: false, grav: 120 },
   crys: { shape: "shard", add: true, grav: 300 },
   sand: { shape: "dust", add: false, grav: 420 },
+  plasma: { shape: "spark", add: true, grav: -60 },
+  flora: { shape: "leaf", add: false, grav: 140 },
 };
 
 // ---------- Forms ----------
@@ -467,8 +474,8 @@ export function newGame(ids: (Power | FighterDef)[], preview = false, teams?: nu
     const def = isJugg ? juggernautOf(base) : base;
     const slot = slotOf.get(i) ?? i;
     const x = n === 2 ? (slot === 0 ? 270 : W - 270) : 70 + ((W - 140) * (slot + 0.5)) / n;
-    // a hybrid stands a little taller than a pure-blooded fighter
-    const sc = isJugg ? scale * 1.25 : def.boss ? scale * 1.22 : def.parents ? scale * 1.12 : isQuester(def.id) ? scale * 1.1 : scale;
+    // a hybrid stands a little taller than a pure-blooded fighter; the young new-generation fighters a little shorter
+    const sc = isJugg ? scale * 1.25 : def.boss ? scale * 1.22 : def.parents ? scale * 1.12 : isNewGen(def.id) ? scale * 0.94 : isQuester(def.id) ? scale * 1.1 : scale;
     const hoverY = GROUND - HOVER_HIGH * sc;
     return {
       key: i, def,

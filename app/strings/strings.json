@@ -162,6 +162,13 @@
       "shuffle": "Shuffle teams",
       "rosterTitle": "Teams",
       "members": "{{team}} team: {{names}}"
+    },
+    "newgen": {
+      "title": "New generation",
+      "count": "{{count}} of {{total}} unlocked",
+      "empty": "Beat a Story boss for a 2 in 5 chance that a young new-generation fighter joins you. Young, but just as strong.",
+      "unlockEyebrow": "New generation",
+      "unlockJoined": "{{name}} has joined your roster. Young, and every bit as dangerous as the veterans. Pick them in any mode except Story."
     }
   },
   "title": {
@@ -205,7 +212,8 @@
       "form": "Form",
       "formAt": "Below {{at}}% health",
       "quest": "Quest fighter",
-      "boss": "Boss"
+      "boss": "Boss",
+      "newgen": "New generation"
     },
     "forms": {
       "title": "Forms",
@@ -215,7 +223,7 @@
       "awakened": "Slowly heals while fighting.",
       "mastery": "Slips some hits entirely.",
       "mystic": "Every hit drains health back.",
-      "nightmare": "Quest fighters only. Darker, stronger, three new moves."
+      "nightmare": "Quest and new-generation fighters only. Darker, stronger, three new moves."
     },
     "role": {
       "attacker": "Attacker",
@@ -266,6 +274,12 @@
       "title": "Not earned yet",
       "body": "Finish its quest to add {{name}} to your roster.",
       "action": "See quests"
+    },
+    "sectionNewGen": "New generation",
+    "newGenCount": "{{count}} of {{total}} unlocked",
+    "newGenLocked": {
+      "title": "Not unlocked yet",
+      "body": "Every Story boss you beat gives a 2 in 5 chance that a new-generation fighter joins you. {{name}} could be next."
     }
   },
   "story": {

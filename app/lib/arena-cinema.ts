@@ -473,6 +473,41 @@ const MARKS: Partial<Record<Power, MarkDraw>> = {
       ctx.fillRect((r() * 2 - 1) * m.w * 0.9, -r() * 3, 2, 2);
     }
   },
+  plasma: (ctx, m, k, r) => {
+    // a scorch with a few arcs of plasma still crackling across it
+    pool(ctx, m.w, withA(m.a, 0.3 * k), withA(m.a, 0));
+    ctx.strokeStyle = withA(m.b, 0.8 * k);
+    ctx.lineWidth = 1.4;
+    for (let i = 0; i < 3; i++) {
+      let x = (r() * 2 - 1) * m.w * 0.6, y = -r() * 3;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      for (let j = 0; j < 4; j++) {
+        x += (r() * 2 - 1) * 9;
+        y = -r() * 6 * k;
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  },
+  flora: (ctx, m, k, r) => {
+    // a tuft of grass and a couple of flowers left growing where it hit
+    for (let i = 0; i < 9; i++) {
+      const x = (r() * 2 - 1) * m.w * 0.7, h = (4 + r() * 9) * k, lean = (r() - 0.5) * 5;
+      ctx.strokeStyle = withA(m.a, 0.85 * k);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.quadraticCurveTo(x, -h * 0.6, x + lean, -h);
+      ctx.stroke();
+      if (i % 4 === 0) {
+        ctx.fillStyle = withA(m.b, 0.9 * k);
+        ctx.beginPath();
+        ctx.arc(x + lean, -h, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  },
 };
 
 const ringMark: MarkDraw = (ctx, m, k) => {

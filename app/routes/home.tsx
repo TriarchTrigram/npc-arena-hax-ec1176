@@ -16,11 +16,11 @@ import { Slider } from "~/components/ui/slider";
 import { PiSpeakerHighBold, PiSpeakerLowBold, PiSpeakerSlashBold } from "react-icons/pi";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { cn } from "~/lib/utils";
-import { FIGHTERS, bossRosterId, defOf, type FighterDef, type Power, type RosterId } from "~/lib/fighters";
+import { DEF_BY_ID, FIGHTERS, NEWGEN_IDS, bossRosterId, defOf, isNewGen, type FighterDef, type Power, type RosterId } from "~/lib/fighters";
 import { BOSSES } from "~/lib/bosses";
 import { UnlockCutscene } from "~/components/quest-scenes";
 import { rememberHybrid, useHybrids } from "~/lib/hybrids";
-import { loadQuests, recordFight, recordTournament, unlockedOf, useQuests } from "~/lib/quests";
+import { loadQuests, recordFight, recordTournament, rollNewGen, unlockedOf, useQuests } from "~/lib/quests";
 import { FusionSheet } from "~/components/fusion-sheet";
 import { FighterDot } from "~/components/fighter-dot";
 import { W, H, TEAM_COLORS, newGame, step, drawScene, buildBackdrop, type Game, type FeedItem } from "~/lib/arena-engine";
@@ -100,7 +100,9 @@ export default function Home() {
   const [mode, setMode] = useState<Mode>("ffa");
   const [picked, setPicked] = useState<RosterId[]>(ALL);
   const hybrids = useHybrids();
-  const questers = unlockedOf(useQuests());
+  const earnedAll = unlockedOf(useQuests());
+  const questers = earnedAll.filter((p) => !isNewGen(p));
+  const young = earnedAll.filter(isNewGen);
   const [status, setStatus] = useState<Status>("ready");
   const [speed, setSpeed] = useState<number>(1);
   const [snap, setSnap] = useState<Snapshot>({ alive: [], feed: [] });
@@ -124,8 +126,10 @@ export default function Home() {
   const cleared = clearedAll[chapter] ?? 0;
   // Story bosses beaten in this browser, playable everywhere but Story
   const bosses = bossesBeaten(clearedAll).map(bossRosterId);
-  const [unlockedBoss, setUnlockedBoss] = useState<FighterDef | null>(null);
-  const closeUnlock = useCallback(() => setUnlockedBoss(null), []);
+  // unlock cutscenes waiting to play, one after another: a beaten boss, then a new-generation fighter
+  type Unlock = { def: FighterDef; eyebrow: StringKey; joined: StringKey };
+  const [unlocks, setUnlocks] = useState<Unlock[]>([]);
+  const closeUnlock = useCallback(() => setUnlocks((q) => q.slice(1)), []);
   useEffect(() => {
     const all = loadProgress().cleared;
     setClearedAll(all);
@@ -287,10 +291,14 @@ export default function Home() {
     if (mode === "story" && at0 != null && g.winnerTeam === 0) {
       // the first win over a chapter's boss adds it to the roster
       const beaten = CHAPTERS[at0.ch]?.stages[at0.i]?.boss;
+      const queued: Unlock[] = [];
       if (beaten && (clearedAll[at0.ch] ?? 0) < STAGES_PER_CHAPTER) {
-        const def = BOSSES[beaten];
-        window.setTimeout(() => setUnlockedBoss(def), 1600);
+        queued.push({ def: BOSSES[beaten], eyebrow: "arena.bosses.unlockEyebrow", joined: "arena.bosses.unlockJoined" });
       }
+      // every boss win, first or replayed, is a chance for a new-generation fighter to join
+      const young = beaten ? rollNewGen() : null;
+      if (young) queued.push({ def: DEF_BY_ID[young], eyebrow: "arena.newgen.unlockEyebrow", joined: "arena.newgen.unlockJoined" });
+      if (queued.length) window.setTimeout(() => setUnlocks((q) => [...q, ...queued]), 1600);
       setClearedAll((all) => {
         const next = [...all];
         next[at0.ch] = Math.max(next[at0.ch] ?? 0, at0.i + 1);
@@ -721,7 +729,7 @@ export default function Home() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {[...ALL, ...questers, ...bosses, ...hybrids].map((id) => (
+                    {[...ALL, ...questers, ...young, ...bosses, ...hybrids].map((id) => (
                       <SelectItem key={id} value={id}>
                         <FighterDot def={defOf(id)} />
                         {defOf(id).name}
@@ -750,6 +758,17 @@ export default function Home() {
             ) : (
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
                 {questers.map(chip)}
+              </div>
+            )}
+            <div className="mt-6 flex flex-wrap items-center gap-3" data-arena-newgen>
+              <Text id="arena.newgen.title" as="h3" className="font-display text-xl text-foreground" />
+              {young.length > 0 && <Text id="arena.newgen.count" vars={{ count: young.length, total: NEWGEN_IDS.length }} className="text-sm text-muted-foreground tabular-nums" />}
+            </div>
+            {young.length === 0 ? (
+              <Text id="arena.newgen.empty" as="p" className="mt-3 max-w-prose text-sm text-muted-foreground" />
+            ) : (
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+                {young.map(chip)}
               </div>
             )}
             <div className="mt-6 flex flex-wrap items-center gap-3" data-arena-bosses>
@@ -847,7 +866,7 @@ export default function Home() {
           </div>
         </>
       )}
-      {unlockedBoss && <UnlockCutscene def={unlockedBoss} eyebrow="arena.bosses.unlockEyebrow" joined="arena.bosses.unlockJoined" onClose={closeUnlock} />}
+      {unlocks[0] && <UnlockCutscene key={unlocks[0].def.id} def={unlocks[0].def} eyebrow={unlocks[0].eyebrow} joined={unlocks[0].joined} onClose={closeUnlock} />}
     </PageContainer>
   );
 }

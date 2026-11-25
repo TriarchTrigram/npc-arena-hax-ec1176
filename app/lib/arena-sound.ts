@@ -262,6 +262,19 @@ const CAST: Record<Power, Voice> = {
     s.noise(5200 * p, 900 * p, 0.32 * len, 0.35, { type: "bandpass", q: 1.5, delay: 0.14 * len });
     s.noise(320 * p, 180 * p, 0.4 * len, 0.25, { type: "lowpass", q: 3 + v, attack: 0.12 * len });
   },
+  // Volta: a fast rising crackle of charge, then a bright electric zap with a buzzing tail
+  plasma: (s, p, len, v) => {
+    s.tone(300 * p, 1800 * p, 0.16 * len, 0.1, { type: "sawtooth", vib: [40, 18] });
+    s.noise(6000, 2500, 0.12 * len, 0.35, { type: "bandpass", q: 2, delay: 0.1 * len });
+    s.fm((v === 1 ? 880 : v === 2 ? 1046 : 784) * p, 1.5, 4, 0.3 * len, 0.12, 0.14 * len);
+    s.tone(120 * p, 90 * p, 0.3 * len, 0.12, { type: "square", attack: 0.02 });
+  },
+  // Briar: a creak of growing wood and a rustle of leaves, with a soft green chime on top
+  flora: (s, p, len, v) => {
+    s.tone(140 * p, 240 * p, 0.3 * len, 0.14, { type: "triangle", vib: [6, 8] });
+    s.noise(3000 * p, 1800 * p, 0.3 * len, 0.3, { type: "bandpass", q: 1.4, attack: 0.06 * len });
+    s.fm((v === 1 ? 659 : v === 2 ? 740 : 587) * p, 2, 1.2, 0.4 * len, 0.1, 0.2 * len);
+  },
 };
 
 const IMPACT: Record<Power, Voice> = {
@@ -337,6 +350,18 @@ const IMPACT: Record<Power, Voice> = {
     s.tone(110 * p, 45, 0.14, 0.5, { type: "sine" });
     s.noise(2600 * p, 700, 0.2, 0.5, { type: "bandpass", q: 1 });
     s.noise(6000, 4000, 0.12, 0.2, { type: "highpass", delay: 0.05 });
+  },
+  // a hard plasma crack and a sizzle
+  plasma: (s, p) => {
+    s.noise(5000, 1500, 0.1, 0.55, { type: "bandpass", q: 2 });
+    s.tone(220 * p, 70, 0.12, 0.35, { type: "square" });
+    s.noise(8000, 6000, 0.18, 0.2, { type: "highpass", delay: 0.04 });
+  },
+  // a woody thwack and a shake of leaves
+  flora: (s, p) => {
+    s.tone(180 * p, 70, 0.1, 0.45, { type: "triangle" });
+    s.noise(2400 * p, 900, 0.16, 0.4, { type: "bandpass", q: 1.5 });
+    s.noise(4500, 3000, 0.14, 0.18, { type: "bandpass", q: 1, delay: 0.05 });
   },
 };
 

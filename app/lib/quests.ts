@@ -1,8 +1,9 @@
 // Quests: 9 long goals, each earning a quest fighter for good once it is complete and claimed.
 // Progress is counted from finished fights and saved in this browser (localStorage), like Story progress.
 // The arena screen reports each finished fight with `recordFight` and each crowned champion with `recordTournament`.
+// The same save keeps the new-generation fighters won by luck after a Story boss win (`rollNewGen`).
 import { useEffect, useState } from "react";
-import { QUESTERS, type Power } from "./fighters";
+import { NEWGEN_IDS, QUESTERS, type Power } from "./fighters";
 
 /** What the arena counts toward quests. */
 export type Stat = "fights" | "kos" | "tournaments" | "bosses" | "forms";
@@ -31,8 +32,8 @@ export const QUESTS: Quest[] = [
 const KEY = "npc-arena-quests";
 const CHANGED = "npc-arena-quests-changed";
 
-export type QuestSave = { stats: Stats; claimed: string[] };
-const EMPTY: QuestSave = { stats: { fights: 0, kos: 0, tournaments: 0, bosses: 0, forms: 0 }, claimed: [] };
+export type QuestSave = { stats: Stats; claimed: string[]; newgen: Power[] };
+const EMPTY: QuestSave = { stats: { fights: 0, kos: 0, tournaments: 0, bosses: 0, forms: 0 }, claimed: [], newgen: [] };
 
 export function loadQuests(): QuestSave {
   try {
@@ -41,7 +42,8 @@ export function loadQuests(): QuestSave {
     const stats = { ...EMPTY.stats };
     for (const k of Object.keys(stats) as Stat[]) stats[k] = Math.max(0, Math.floor(Number(raw.stats?.[k]) || 0));
     const claimed = Array.isArray(raw.claimed) ? raw.claimed.filter((x: unknown): x is string => typeof x === "string" && QUESTS.some((q) => q.id === x)) : [];
-    return { stats, claimed: [...new Set<string>(claimed)] };
+    const newgen = Array.isArray(raw.newgen) ? NEWGEN_IDS.filter((p) => raw.newgen.includes(p)) : [];
+    return { stats, claimed: [...new Set<string>(claimed)], newgen };
   } catch {
     return EMPTY;
   }
@@ -79,9 +81,25 @@ export function claimQuest(id: string): boolean {
   return true;
 }
 
-/** Quest fighters this browser has earned, in quest order. */
-export const unlockedOf = (q: QuestSave): Power[] =>
-  QUESTS.filter((x) => x.reward && q.claimed.includes(x.id)).map((x) => x.reward!).filter((p) => QUESTERS.some((d) => d.id === p));
+/** The chance that a Story boss win brings in one new-generation fighter not yet unlocked. */
+export const NEWGEN_CHANCE = 0.4;
+
+/** After a Story boss win: with `NEWGEN_CHANCE`, one still-locked new-generation fighter joins for good. Returns who joined. */
+export function rollNewGen(): Power | null {
+  const q = loadQuests();
+  const locked = NEWGEN_IDS.filter((p) => !q.newgen.includes(p));
+  if (!locked.length || Math.random() >= NEWGEN_CHANCE) return null;
+  const won = locked[Math.floor(Math.random() * locked.length)];
+  q.newgen.push(won);
+  save(q);
+  return won;
+}
+
+/** Quest fighters this browser has earned, in quest order, then the new-generation fighters it has unlocked. */
+export const unlockedOf = (q: QuestSave): Power[] => [
+  ...QUESTS.filter((x) => x.reward && q.claimed.includes(x.id)).map((x) => x.reward!).filter((p) => QUESTERS.some((d) => d.id === p)),
+  ...NEWGEN_IDS.filter((p) => q.newgen.includes(p)),
+];
 
 /** The saved quest progress, read after the first render so the server and browser agree. */
 export function useQuests(): QuestSave {

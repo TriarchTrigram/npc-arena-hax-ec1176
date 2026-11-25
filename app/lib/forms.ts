@@ -341,6 +341,28 @@ FORMS.sand = {
     M({ id: "sand-sea", name: "Sand Sea", kind: "projectile", anim: "slam", range: 900, minRange: 60, cd: 6, dmg: 18, speed: 360, size: 30, pierce: true, ground: true, shape: "wave", kb: 420, lift: -320, status: "blind", statusDur: 1, wind: 0.4, rec: 0.35 }),
   ],
 };
+FORMS.plasma = {
+  power: "plasma", kind: "nightmare", title: "SUPERNOVA", ...NIGHTMARE,
+  blurb: "Volta stops holding back. The plasma burns white and violet, a corona flares off every limb and each star thrown collapses into a nova.",
+  body: "hsl(280 40% 10%)", glow: "hsl(0 0% 100%)", a: "hsl(285 100% 62%)", b: "hsl(190 100% 80%)", dark: "hsl(270 60% 3%)",
+  dmg: 1.35, kb: 1.25, cd: 0.7, speed: 1.25, act: 1.2,
+  moves: [
+    M({ id: "corona-storm", name: "Corona Storm", kind: "rain", anim: "raise", range: 600, cd: 6, dmg: 10, count: 10, radius: 200, shape: "orb", status: "burn", statusDur: 1.5, wind: 0.34, rec: 0.3 }),
+    M({ id: "white-dwarf", name: "White Dwarf", kind: "projectile", anim: "raise", range: 800, minRange: 80, cd: 5, dmg: 24, speed: 380, size: 30, shape: "orb", pierce: true, kb: 520, status: "burn", statusDur: 2, wind: 0.4 }),
+    M({ id: "star-collapse", name: "Star Collapse", kind: "burst", anim: "raise", range: 200, cd: 8, dmg: 22, radius: 240, kb: 620, lift: -400, status: "burn", statusDur: 2, wind: 0.45, rec: 0.35 }),
+  ],
+};
+FORMS.flora = {
+  power: "flora", kind: "nightmare", title: "WILD OVERGROWTH", ...NIGHTMARE,
+  blurb: "The leaves turn black and the flowers bleed red. The floor splits under a forest of thorns, and nothing caught in it gets out.",
+  body: "hsl(140 30% 8%)", glow: "hsl(350 100% 58%)", a: "hsl(140 40% 22%)", b: "hsl(350 100% 66%)", dark: "hsl(140 40% 3%)",
+  dmg: 1.3, kb: 1.2, cd: 0.7, speed: 1.2, act: 1.2,
+  moves: [
+    M({ id: "thorn-forest", name: "Thorn Forest", kind: "eruption", anim: "slam", range: 620, minRange: 40, cd: 6.5, dmg: 14, radius: 46, count: 5, lift: -700, status: "poison", statusDur: 2, wind: 0.36 }),
+    M({ id: "strangler-garden", name: "Strangler Garden", kind: "zone", anim: "slam", range: 440, cd: 9, dmg: 8, radius: 160, dur: 4.5, pullIn: 280, status: "slow", statusDur: 0.6, wind: 0.36 }),
+    M({ id: "carnivore-bloom", name: "Carnivore Bloom", kind: "burst", anim: "raise", range: 180, cd: 7, dmg: 20, radius: 200, kb: 500, lift: -380, heal: 12, status: "poison", statusDur: 2, wind: 0.4, rec: 0.35 }),
+  ],
+};
 
 /** Pyro's second step: from Blue Flame into red and blue fire at once. Stronger and faster than his Rage Mode. */
 export const PERFECTED_FLAME: Form = {

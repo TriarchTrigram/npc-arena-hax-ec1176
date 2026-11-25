@@ -1402,6 +1402,119 @@ export const INTROS: Record<Power, IntroSpec> = {
     },
   },
 
+  // Volta: a small star streaks down out of the sky, slams into the spot in a flash of plasma, and Volta is crouched
+  // in the scorch mark, still white-hot, before springing up grinning.
+  plasma: {
+    len: 1.7, hit: 0.48, shake: 10, wave: ["hsl(322 90% 64%)", "hsl(190 100% 70%)"],
+    body: (u, s) => base(u < 0.48 ? "air" : settle(u, "land", 0.7), {
+      alpha: seg(u, 0.46, 0.5),
+      sy: u < 0.62 ? 0.85 + 0.15 * easeOut(seg(u, 0.48, 0.62)) : 1,
+      solid: "hsl(0 0% 100%)", solidA: 1 - seg(u, 0.5, 0.82),
+    }),
+    bursts: [
+      { at: 0.48, n: 40, spd: 520, shape: "spark", a: "hsl(322 90% 66%)", b: "hsl(190 100% 80%)", grav: 200, add: true, from: "feet", dir: "out" },
+      { at: 0.48, n: 20, spd: 380, shape: "bolt", a: "hsl(190 100% 70%)", b: "hsl(0 0% 100%)", grav: 0, add: true, from: "feet", dir: "flat" },
+    ],
+    back: ({ ctx, x, ground, s, u, t }) => {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      if (u < 0.48) {
+        // the falling star and its tail
+        const k = easeIn(seg(u, 0, 0.48));
+        const sx = lerp(x - 240 * s, x, k), sy = lerp(ground - 380 * s, ground - 14 * s, k);
+        for (let i = 6; i >= 0; i--) {
+          const b = Math.max(0, k - i * 0.04);
+          const tx = lerp(x - 240 * s, x, b), ty = lerp(ground - 380 * s, ground - 14 * s, b);
+          glow(ctx, tx, ty, (14 - i * 1.6) * s, (14 - i * 1.6) * s, hsla(322, 90, 66, 0.55 - i * 0.07), hsla(322, 90, 66, 0));
+        }
+        glow(ctx, sx, sy, 20 * s, 20 * s, hsla(0, 0, 100, 0.95), hsla(190, 100, 70, 0));
+      } else {
+        // the scorch: a flash, then arcs of plasma crawling over the floor
+        const f = 1 - seg(u, 0.48, 0.85);
+        glow(ctx, x, ground - 20 * s, 120 * s * (1.2 - f * 0.2), 70 * s, hsla(322, 90, 70, 0.6 * f), hsla(190, 100, 70, 0));
+        ctx.strokeStyle = hsla(190, 100, 76, 0.85 * f);
+        ctx.lineWidth = 2 * s;
+        for (let i = 0; i < 5; i++) {
+          const a = (i / 5) * Math.PI + wob(i + Math.floor(t * 14)) * 0.3;
+          jag(ctx, x, ground - 4 * s, x + Math.cos(a) * 80 * s, ground - Math.sin(a) * 30 * s, 5, 8 * s, i + Math.floor(t * 20));
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    },
+  },
+
+  // Briar: a seed drops and lands on the spot, vines spiral up out of it into a tall closed bud, and the bud opens
+  // petal by petal with Briar standing in the middle.
+  flora: {
+    len: 1.8, hit: 0.62, shake: 6, wave: ["hsl(118 50% 50%)", "hsl(330 100% 74%)"],
+    body: (u, s) => base(u < 0.62 ? "crouch" : settle(u, "rise", 0.78), {
+      alpha: seg(u, 0.58, 0.66),
+      solid: "hsl(118 50% 60%)", solidA: 1 - seg(u, 0.62, 0.86),
+    }),
+    bursts: [
+      { at: 0.62, n: 30, spd: 320, shape: "petal", a: "hsl(330 100% 74%)", b: "hsl(345 100% 86%)", grav: 120, add: false, from: "body", dir: "out" },
+      { at: 0.62, n: 20, spd: 260, shape: "leaf", a: "hsl(118 50% 46%)", b: "hsl(90 70% 62%)", grav: 160, add: false, from: "feet", dir: "up" },
+    ],
+    back: ({ ctx, x, ground, s, u, t }) => {
+      ctx.save();
+      // the seed falling onto the spot
+      if (u < 0.14) {
+        const k = easeIn(seg(u, 0, 0.14));
+        ctx.fillStyle = "hsl(30 45% 36%)";
+        ctx.beginPath();
+        ctx.ellipse(x, lerp(ground - 200 * s, ground - 3 * s, k), 3.5 * s, 5 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const grow = easeOut(seg(u, 0.12, 0.56));
+      const open = easeOut(seg(u, 0.58, 0.8));
+      const fade = 1 - seg(u, 0.78, 0.98);
+      if (grow > 0 && fade > 0) {
+        const tall = 120 * s * grow;
+        // two vines winding round each other up to the bud
+        for (let v = 0; v < 2; v++) {
+          ctx.strokeStyle = hsla(118, 46, v ? 34 : 42, 0.95 * fade);
+          ctx.lineWidth = (5 - v) * s;
+          ctx.beginPath();
+          for (let i = 0; i <= 20; i++) {
+            const k = i / 20;
+            const px = x + Math.sin(k * 9 + v * Math.PI + t * 1.5) * 22 * s * (1 - k * 0.4) * (1 - open);
+            const py = ground - k * tall;
+            if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+          }
+          ctx.stroke();
+        }
+        // the bud: five petals closed into a point, falling open outward
+        const by = ground - tall * 0.55;
+        for (let i = 0; i < 5; i++) {
+          const side = (i - 2) / 2;
+          const ang = -Math.PI / 2 + side * (0.25 + open * 1.1);
+          const len = 70 * s * grow;
+          ctx.save();
+          ctx.translate(x + side * 10 * s, ground - 8 * s);
+          ctx.rotate(ang + Math.PI / 2);
+          ctx.fillStyle = hsla(330, 90, i % 2 ? 66 : 72, 0.92 * fade);
+          ctx.strokeStyle = hsla(345, 100, 86, 0.8 * fade);
+          ctx.lineWidth = 1.2 * s;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.quadraticCurveTo(-18 * s, -len * 0.5, 0, -len);
+          ctx.quadraticCurveTo(18 * s, -len * 0.5, 0, 0);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+        // a warm glow inside the bud just before it opens
+        const charge = seg(u, 0.42, 0.62) * fade;
+        if (charge > 0) {
+          ctx.globalCompositeOperation = "lighter";
+          glow(ctx, x, by, 50 * s * charge, 70 * s * charge, hsla(52, 100, 74, 0.6 * charge), hsla(330, 100, 70, 0));
+        }
+      }
+      ctx.restore();
+    },
+  },
+
 };
 
 // ---------- the 8 Story bosses ----------

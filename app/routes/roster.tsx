@@ -14,7 +14,7 @@ import {
   EmptyState,
 } from "~/components/design";
 import { cn } from "~/lib/utils";
-import { FIGHTERS, QUESTERS, defOf, type FighterDef, type Role } from "~/lib/fighters";
+import { DEF_BY_ID, FIGHTERS, NEWGEN_IDS, QUESTERS, defOf, isNewGen, type FighterDef, type Role } from "~/lib/fighters";
 import { BOSSES, BOSS_PHASES, type BossId } from "~/lib/bosses";
 import { bossChapter, bossesBeaten, loadProgress } from "~/lib/story";
 import { QUESTS, unlockedOf, useQuests } from "~/lib/quests";
@@ -66,7 +66,7 @@ function TopBar() {
   );
 }
 
-function FighterCard({ fighter, index, quest = false }: { fighter: Fighter; index: number | null; quest?: boolean }) {
+function FighterCard({ fighter, index, quest = false, newgen = false }: { fighter: Fighter; index: number | null; quest?: boolean; newgen?: boolean }) {
   const boss = fighter.boss;
   const hybrid = !!fighter.parents;
   return (
@@ -83,6 +83,8 @@ function FighterCard({ fighter, index, quest = false }: { fighter: Fighter; inde
           <div className="min-w-0 flex-1">
             {boss ? (
               <Text id="roster.card.boss" className="text-xs uppercase tracking-widest text-muted-foreground" />
+            ) : newgen ? (
+              <Text id="roster.card.newgen" className="text-xs uppercase tracking-widest text-muted-foreground" />
             ) : quest ? (
               <Text id="roster.card.quest" className="text-xs uppercase tracking-widest text-muted-foreground" />
             ) : index == null ? (
@@ -206,7 +208,9 @@ export default function Roster() {
   const hybridKeys = useHybrids();
   const hybrids = hybridKeys.map(defOf);
   const shownHybrids = hybrids.filter((f) => role === "all" || f.role === role);
-  const earned = unlockedOf(useQuests());
+  const unlocked = unlockedOf(useQuests());
+  const earned = unlocked.filter((p) => !isNewGen(p));
+  const youngEarned = unlocked.filter(isNewGen);
   // Story progress lives in this browser, so it is read after the first render
   const [beaten, setBeaten] = useState<BossId[]>([]);
   useEffect(() => setBeaten(bossesBeaten(loadProgress().cleared)), []);
@@ -281,7 +285,7 @@ export default function Roster() {
           action={<Text id="roster.questCount" vars={{ count: earned.length }} className="text-sm text-muted-foreground tabular-nums" />}
         />
         <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {QUESTERS.map((q) => (
+          {QUESTERS.filter((q) => !isNewGen(q.id)).map((q) => (
             <li key={q.id}>
               {earned.includes(q.id) ? (
                 <FighterCard fighter={q} index={null} quest />
@@ -303,6 +307,39 @@ export default function Roster() {
               )}
             </li>
           ))}
+        </ul>
+      </section>
+
+      <section className="mt-12" data-roster-newgen>
+        <SectionHeading
+          title={<Text id="roster.sectionNewGen" />}
+          action={<Text id="roster.newGenCount" vars={{ count: youngEarned.length, total: NEWGEN_IDS.length }} className="text-sm text-muted-foreground tabular-nums" />}
+        />
+        <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {NEWGEN_IDS.map((id) => {
+            const y = DEF_BY_ID[id];
+            return (
+              <li key={id}>
+                {youngEarned.includes(id) ? (
+                  <FighterCard fighter={y} index={null} newgen />
+                ) : (
+                  <Panel className="h-full overflow-hidden">
+                    <div className="border-b-2 border-border-subtle bg-[hsl(250_32%_10%)]">
+                      <FighterPortrait def={y} locked />
+                    </div>
+                    <PanelBody className="flex flex-col gap-3">
+                      <Text id="roster.card.newgen" className="text-xs uppercase tracking-widest text-muted-foreground" />
+                      <Text id="roster.newGenLocked.title" as="h3" className="font-display text-xl text-foreground" />
+                      <Text id="roster.newGenLocked.body" vars={{ name: y.name }} as="p" className="text-sm text-foreground-secondary" />
+                      <Button asChild variant="outline" size="sm" className="self-start">
+                        <Link to="/"><Text id="roster.cta" /></Link>
+                      </Button>
+                    </PanelBody>
+                  </Panel>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </section>
 

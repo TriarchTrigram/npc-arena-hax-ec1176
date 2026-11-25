@@ -16,6 +16,7 @@ NPC Arena is a single-player browser game where you watch power-themed NPCs figh
 - Fighters are data in `lib/fighters.ts` (16 originals plus 9 quest fighters); move looks, forms, entrances and quest designs in their own lib files. A new fighter or boss touches: fighters/bosses, forms (Nightmare) or BOSS_PHASES, move-looks (borrowed `sig` drawings), arena-engine stance/idle/FX, arena-sound CAST+IMPACT, spawn-intros, quest-designs or boss-designs, arena-cinema marks, strings.
 - Story: `lib/story.ts` (8 chapters x 10 stages, ending on The Axiom), bosses with 4 phases in `lib/bosses.ts` / `boss-designs.ts`; beating a chapter boss unlocks it as a fighter. Chapter titles/stage names are keyed in `story-panel.tsx`.
 - Fusion lab (`components/fusion-sheet.tsx`, `lib/hybrids.ts`), Fighters page (`/roster`), Quests page (`/quests`, `lib/quests.ts`, unlock cutscenes); "Fight as X" opens `/?fighter=<id>`.
+- New generation: two young fighters, Volta (plasma) and Briar (plants), defined in the QUESTERS list (so they get quest-fighter looks, forms and entrances) but marked by `NEWGEN_IDS`. Not earned by quests: every Story boss win rolls `rollNewGen` (2 in 5) and unlocks one still-locked one, saved in the quest save's `newgen` list and returned by `unlockedOf`. They have their own rows on the arena picker and Fighters page, and a queued unlock cutscene after the boss one.
 Everything below this section is Stencil's platform documentation.
 
 ## Platform-managed — don't touch
