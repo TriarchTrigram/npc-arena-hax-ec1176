@@ -169,6 +169,11 @@
       "empty": "Beat a Story boss for a 2 in 5 chance that a young new-generation fighter joins you. Young, but just as strong.",
       "unlockEyebrow": "New generation",
       "unlockJoined": "{{name}} has joined your roster. Young, and every bit as dangerous as the veterans. Pick them in any mode except Story."
+    },
+    "me": {
+      "title": "Your character",
+      "empty": "You haven't made a character yet. Make one in Free World and it shows up here, ready to pick.",
+      "make": "Go to Free World"
     }
   },
   "title": {
@@ -645,7 +650,8 @@
       "newgen": "New generation",
       "bosses": "Rehabilitated bosses",
       "hybrids": "Hybrids",
-      "beaten": "Bosses you've beaten"
+      "beaten": "Bosses you've beaten",
+      "mine": "Your character"
     },
     "bosses": {
       "title": "Bosses you've beaten",
@@ -654,6 +660,64 @@
       "rehab": "Rehabilitate",
       "rehabbed": "Rehabilitated",
       "done": "{{name}} has turned over a new leaf and can join your party."
+    },
+    "me": {
+      "title": "Your character",
+      "empty": "Make your own stick-figure fighter. Its powers decide how it looks and fights.",
+      "make": "Make a character",
+      "edit": "Edit",
+      "play": "Walk as {{name}}"
     }
+  },
+  "creator": {
+    "title": "Your character",
+    "intro": "Name your stick figure, give it up to 3 powers and choose its look. The powers decide its colours, stance, entrance, effects and moves.",
+    "previewAria": "Your character standing in the stance its powers give it",
+    "fallbackName": "You",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Nova",
+    "powersTitle": "Powers",
+    "powersHint": "The first power is your main one: it sets your colour, stance and voice. A second power adds its glow and a fused entrance.",
+    "powersCount": "{{count}} of {{max}} picked",
+    "mainPower": "Main",
+    "lookTitle": "Look",
+    "lookHint": "The colours always come from your powers. Pick what you wear, how tall you stand and which of those colours your body takes.",
+    "gearLabel": "Wear",
+    "gear": {
+      "scarf": "Scarf",
+      "cape": "Cape",
+      "headband": "Headband",
+      "mask": "Mask",
+      "none": "Nothing"
+    },
+    "buildLabel": "Build",
+    "build": {
+      "small": "Small",
+      "regular": "Regular",
+      "tall": "Tall"
+    },
+    "shadeLabel": "Body colour",
+    "shade": {
+      "main": "Main colour",
+      "glow": "Glow colour",
+      "dark": "Black, glowing outline"
+    },
+    "givesTitle": "What your powers give you",
+    "stat": {
+      "role": "Style",
+      "health": "Health",
+      "speed": "Speed"
+    },
+    "role": {
+      "attacker": "Attacker",
+      "control": "Control",
+      "tank": "Tank",
+      "support": "Support",
+      "trickster": "Trickster"
+    },
+    "movesCount": "{{count}} moves",
+    "save": "Save character",
+    "needName": "Give your character a name to save it.",
+    "savedNote": "Saved. {{name}} is walking as you in Free World and can be picked in the arena."
   }
 }

@@ -129,10 +129,28 @@ const QUEST_STANCE: Partial<Record<Power, Pose>> = {
   // Turbo: leaning into a sprint start, weight on the front foot, front hand out loose, back arm swung behind
   chaos: { t: 0.3, aF1: 1.3, aF2: 1.9, aB1: -0.9, aB2: -0.3, lF1: 0.65, lF2: -0.1, lB1: -0.55, lB2: -0.4 },
 };
+/** The fighter you made stands by its main power's role: how that kind of fighter would square up. */
+const CUSTOM_STANCE: Record<FighterDef["role"], Pose> = {
+  // attacker: leaning in, fists up and ready to throw
+  attacker: { t: 0.24, aF1: 1.15, aF2: 2.45, aB1: 0.75, aB2: 2.25, lF1: 0.6, lF2: -0.05, lB1: -0.52, lB2: -0.38 },
+  // control: upright, front palm held out flat, back hand drawn in to the chest
+  control: { t: 0.06, aF1: 1.55, aF2: 1.65, aB1: 0.55, aB2: 2.2, lF1: 0.38, lF2: 0.02, lB1: -0.32, lB2: -0.12 },
+  // tank: wide and planted, arms low and heavy at the sides
+  tank: { t: 0.14, aF1: 0.6, aF2: 1.1, aB1: -0.6, aB2: -1.05, lF1: 0.62, lF2: 0.08, lB1: -0.6, lB2: -0.2 },
+  // support: light on the feet, both palms open in front, one a little higher
+  support: { t: 0.04, aF1: 1.3, aF2: 1.75, aB1: 1.0, aB2: 1.5, lF1: 0.32, lF2: 0.0, lB1: -0.28, lB2: -0.1 },
+  // trickster: side-on and loose, front hand dangling, back arm flung behind
+  trickster: { t: 0.18, aF1: 0.95, aF2: 0.5, aB1: -1.2, aB2: -0.7, lF1: 0.5, lF2: -0.12, lB1: -0.45, lB2: -0.45 },
+};
+/** How fast each kind of made fighter breathes at rest. */
+const CUSTOM_IDLE_HZ: Record<FighterDef["role"], number> = { attacker: 6, control: 2.4, tank: 2, support: 3, trickster: 7.5 };
+/** Small, regular or tall. */
+const CUSTOM_SCALE = { small: 0.92, regular: 1, tall: 1.1 } as const;
 const pairHash = (a: Power, b: Power) => [a, b].sort().join("+").split("").reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 /** The rest stance this fighter stands in. */
 function stanceOf(def: FighterDef): Pose {
   if (def.boss) return BOSS_STANCE[def.boss];
+  if (def.custom) return CUSTOM_STANCE[def.role];
   const qs = QUEST_STANCE[def.id];
   if (qs && !def.parents) return qs;
   if (def.parents) return HYBRID_STANCES[pairHash(def.parents[0], def.parents[1]) % HYBRID_STANCES.length];
@@ -145,6 +163,11 @@ function idlePose(f: Fighter, gt: number): Pose {
     const m = BOSS_IDLE[f.def.boss];
     const b = Math.sin(gt * m.hz + f.key);
     return { ...st, t: st.t + b * m.t, aF2: st.aF2 + b * m.aF, aB2: st.aB2 + b * m.aB, lF1: st.lF1 + b * m.l, lB1: st.lB1 - b * m.l };
+  }
+  if (f.def.custom) {
+    const hz = CUSTOM_IDLE_HZ[f.def.role];
+    const b = Math.sin(gt * hz + f.key), c = Math.cos(gt * hz + f.key);
+    return { ...st, t: st.t + b * 0.03, aF2: st.aF2 + b * 0.08, aB2: st.aB2 + (f.def.custom.powers.length > 1 ? c : b) * 0.08, lF1: st.lF1 + b * 0.03, lB1: st.lB1 - b * 0.03 };
   }
   if (f.def.parents) {
     // two powers pulsing in turn: one hand, then the other
@@ -170,8 +193,10 @@ const fusionCache = new Map<string, IntroSpec>();
 /** The entrance this fighter plays: a boss its own, a hybrid the fusion of both parents, anyone else its element's. */
 function introOf(def: FighterDef): IntroSpec {
   if (def.boss) return BOSS_INTROS[def.boss];
-  if (def.parents) {
-    const [a, b] = def.parents;
+  // the fighter you made: with two powers or more, the first two arrive fused like a hybrid's
+  const two = def.parents ?? (def.custom && def.custom.powers.length > 1 ? [def.custom.powers[0], def.custom.powers[1]] as const : null);
+  if (two) {
+    const [a, b] = two;
     const key = a + "+" + b;
     let sp = fusionCache.get(key);
     if (!sp) {
@@ -288,7 +313,7 @@ const isDarkForm = (k?: FormKind) => k === "nightmare" || k === "surge";
 /** The form a fighter breaks into now, if any. Forms only belong to the pure fighters, not to a hybrid or a boss carrying their power.
  * A Story boss has its own phases instead (BOSS_PHASES in bosses.ts), taken one at a time as its health runs down. */
 function nextForm(f: Fighter): Form | null {
-  if (f.def.parents) return null;
+  if (f.def.parents || f.def.custom) return null;
   const share = f.hp / f.maxHp;
   if (f.def.boss) {
     const phases = BOSS_PHASES[f.def.boss];
@@ -493,7 +518,7 @@ export function newGame(ids: (Power | FighterDef)[], preview = false, teams?: nu
     const slot = slotOf.get(i) ?? i;
     const x = n === 2 ? (slot === 0 ? 270 : W - 270) : 70 + ((W - 140) * (slot + 0.5)) / n;
     // a hybrid stands a little taller than a pure-blooded fighter; the young new-generation fighters a little shorter
-    const sc = isJugg ? scale * 1.25 : def.boss ? scale * 1.22 : def.parents ? scale * 1.12 : isNewGen(def.id) ? scale * 0.94 : isQuester(def.id) ? scale * 1.1 : scale;
+    const sc = isJugg ? scale * 1.25 : def.custom ? scale * CUSTOM_SCALE[def.custom.build] : def.boss ? scale * 1.22 : def.parents ? scale * 1.12 : isNewGen(def.id) ? scale * 0.94 : isQuester(def.id) ? scale * 1.1 : scale;
     const hoverY = GROUND - HOVER_HIGH * sc;
     return {
       key: i, def,
@@ -1692,11 +1717,15 @@ function stepIntro(g: Game, dt: number) {
       sfx(g, { k: "intro", power: f.def.id });
       // a hybrid arrives with both of its parents' voices
       if (f.def.parents && f.def.parents[1] !== f.def.id) sfx(g, { k: "intro", power: f.def.parents[1] });
+      // the fighter you made arrives with its second power's voice too
+      const second = f.def.custom?.powers[1];
+      if (second) sfx(g, { k: "intro", power: second });
       g.shake = Math.max(g.shake, sp.shake * (g.duel ? 1 : 0.6));
       if (!g.preview && !g.demo && g.fighters.length <= 4) g.focus.push({ x: f.x, y: f.y - 55 * f.scale, t: 0, max: 0.45, seed: Math.random() * 100, color: f.def.glow });
       // every arrival leaves its element's mark; a hybrid leaves both parents'
       mark(g, f.def.parents?.[0] ?? f.def.id, f.x, 52 * f.scale);
       if (f.def.parents && f.def.parents[1] !== f.def.parents[0]) mark(g, f.def.parents[1], f.x + 14 * f.scale, 40 * f.scale);
+      if (second) mark(g, second, f.x + 14 * f.scale, 40 * f.scale);
       if (sp.wave) g.waves.push({ x: f.x, y: f.y - 30 * f.scale, r: 120 * f.scale, life: 0.5, max: 0.5, a: sp.wave[0], b: sp.wave[1] });
     }
   }
@@ -3049,6 +3078,71 @@ function drawImpact(ctx: CanvasRenderingContext2D, x: Impact) {
   ctx.restore();
 }
 
+type Pt = { x: number; y: number };
+/** A cape for the fighter you made: hung from the shoulders, swinging out behind as it moves. */
+function drawCape(ctx: CanvasRenderingContext2D, neck: Pt, hip: Pt, face: number, wave: number, vx: number, s: number, fill: string, ink: string) {
+  const back = -face * (14 + Math.min(40, Math.abs(vx) * 0.06)) * s;
+  const low = hip.y + 22 * s;
+  ctx.beginPath();
+  ctx.moveTo(neck.x - face * 2 * s, neck.y - 1 * s);
+  ctx.quadraticCurveTo(neck.x + back * 0.9, (neck.y + low) / 2 + wave, hip.x + back * 1.4, low - wave * 0.5);
+  ctx.lineTo(hip.x + back * 0.5, low + 4 * s);
+  ctx.quadraticCurveTo(hip.x - face * 4 * s, (neck.y + low) / 2, neck.x + face * 3 * s, neck.y + 2 * s);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 2.5 * s;
+  ctx.stroke();
+}
+/** A headband with two tails trailing behind, or a mask band across the eyes with the eye showing through. */
+function drawHeadGear(ctx: CanvasRenderingContext2D, gear: "headband" | "mask", head: Pt, face: number, wave: number, vx: number, s: number, fill: string, ink: string, eyeOpen: boolean) {
+  const r = HEAD * s;
+  const y = gear === "headband" ? head.y - r * 0.45 : head.y - 1.5 * s;
+  const half = gear === "headband" ? 2.6 * s : 3.6 * s;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(head.x, head.y, r, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = fill;
+  ctx.fillRect(head.x - r - 2, y - half, r * 2 + 4, half * 2);
+  ctx.restore();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 1.6 * s;
+  for (const dy of [-half, half]) {
+    const w = Math.sqrt(Math.max(0, r * r - (y + dy - head.y) ** 2));
+    ctx.beginPath();
+    ctx.moveTo(head.x - w, y + dy);
+    ctx.lineTo(head.x + w, y + dy);
+    ctx.stroke();
+  }
+  // the tails of the knot, trailing behind the head
+  const bx = head.x - face * r * 0.95, tl = (12 + Math.min(16, Math.abs(vx) * 0.03)) * s;
+  for (const k of gear === "headband" ? [0, 1] : [0]) {
+    ctx.beginPath();
+    ctx.moveTo(bx, y);
+    ctx.quadraticCurveTo(bx - face * tl * 0.6, y + wave * (k ? -1 : 1) + k * 4 * s, bx - face * tl, y + 5 * s + k * 5 * s - wave * 0.6);
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 5 * s;
+    ctx.stroke();
+    ctx.strokeStyle = fill;
+    ctx.lineWidth = 2.6 * s;
+    ctx.stroke();
+  }
+  if (gear === "mask" && eyeOpen) {
+    // the eye still shows through the mask
+    const ex = head.x + face * 5 * s, ey = head.y - 1.5 * s;
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.ellipse(ex, ey, 3.2 * s, 2.6 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = INK;
+    ctx.beginPath();
+    ctx.arc(ex + face * 1.2 * s, ey + 0.3 * s, 1.6 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 /** `alpha` fades the whole body, `solid` paints it one flat colour (used by the entrances), `shadow: false` skips the floor shadow. */
 function drawFighterBody(ctx: CanvasRenderingContext2D, g: Game, f: Fighter, o: { alpha?: number; solid?: string; shadow?: boolean } = {}) {
   const s = f.scale;
@@ -3093,7 +3187,7 @@ function drawFighterBody(ctx: CanvasRenderingContext2D, g: Game, f: Fighter, o: 
   }
   if (f.def.boss && !o.solid) drawBossDesign(ctx, f.def.boss, "back", bossPts, s, face, bt, f.alive, f.vx, bossAct, bossPhase);
   // a quest fighter (not a hybrid carrying its power) wears its own design
-  const quest = isQuester(f.def.id) && !f.def.parents && !f.def.boss && !o.solid;
+  const quest = isQuester(f.def.id) && !f.def.parents && !f.def.boss && !f.def.custom && !o.solid;
   let questAct: QuestAct | undefined;
   const questPaint = { glow: rg?.glow ?? f.def.glow, a: rg?.a ?? f.def.color, b: rg?.b ?? f.def.glow, nightmare: isDarkForm(rg?.kind) };
   if (quest && f.act && f.alive) {
@@ -3107,7 +3201,9 @@ function drawFighterBody(ctx: CanvasRenderingContext2D, g: Game, f: Fighter, o: 
 
   // scarf trailing from the neck (a boss wears its own design instead)
   const wave = Math.sin((g.t + (g.intro?.t ?? 0)) * 12 + f.key) * 4 * s;
-  if (!f.def.boss && !quest) {
+  const gear = f.def.custom?.gear;
+  if (gear === "cape") drawCape(ctx, neck, hip, face, wave, f.vx, s, o.solid ?? rg?.glow ?? f.def.glow, ink);
+  if (!f.def.boss && !quest && (!gear || gear === "scarf")) {
   const sx = -face * (16 + Math.abs(f.vx) * 0.03) * s;
   ctx.beginPath();
   ctx.moveTo(neck.x, neck.y + 2 * s);
@@ -3186,6 +3282,7 @@ function drawFighterBody(ctx: CanvasRenderingContext2D, g: Game, f: Fighter, o: 
     ctx.arc(ex + face * 1.3 * s, ey + 0.5 * s, 2 * s, 0, Math.PI * 2);
     ctx.fill();
   }
+  if ((gear === "headband" || gear === "mask") && !o.solid) drawHeadGear(ctx, gear, head, face, wave, f.vx, s, rg?.glow ?? f.def.glow, ink, f.alive && !blind);
   if (f.def.boss && !o.solid) drawBossDesign(ctx, f.def.boss, "front", bossPts, s, face, bt, f.alive, f.vx, bossAct, bossPhase);
   if (quest) drawQuestDesign(ctx, f.def.id, "front", bossPts, s, face, bt, f.alive, questAct, questPaint, f.vx);
   ctx.globalAlpha = 1;

@@ -16,7 +16,8 @@ import { Slider } from "~/components/ui/slider";
 import { PiSpeakerHighBold, PiSpeakerLowBold, PiSpeakerSlashBold } from "react-icons/pi";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { cn } from "~/lib/utils";
-import { DEF_BY_ID, FIGHTERS, NEWGEN_IDS, bossRosterId, defOf, isNewGen, type FighterDef, type Power, type RosterId } from "~/lib/fighters";
+import { DEF_BY_ID, FIGHTERS, NEWGEN_IDS, bossRosterId, defOf, isCustomKey, isNewGen, type FighterDef, type Power, type RosterId } from "~/lib/fighters";
+import { useMyFighter } from "~/lib/my-fighter";
 import { BOSSES } from "~/lib/bosses";
 import { UnlockCutscene } from "~/components/quest-scenes";
 import { rememberHybrid, useHybrids } from "~/lib/hybrids";
@@ -101,6 +102,15 @@ export default function Home() {
   const [mode, setMode] = useState<Mode>("ffa");
   const [picked, setPicked] = useState<RosterId[]>(ALL);
   const hybrids = useHybrids();
+  // the character you made in Free World; an edited one replaces the old one wherever it was picked
+  const me = useMyFighter();
+  const mine = me.id ? [me.id] : [];
+  useEffect(() => {
+    if (!me.id) return;
+    const now = me.id;
+    setPicked((cur) => (cur.some((id) => isCustomKey(id) && id !== now) ? cur.map((id) => (isCustomKey(id) ? now : id)) : cur));
+    setJugg((cur) => (isCustomKey(cur) && cur !== now ? now : cur));
+  }, [me.id]);
   const earnedAll = unlockedOf(useQuests());
   const questers = earnedAll.filter((p) => !isNewGen(p));
   const young = earnedAll.filter(isNewGen);
@@ -737,7 +747,7 @@ export default function Home() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {[...ALL, ...questers, ...young, ...bosses, ...hybrids].map((id) => (
+                    {[...mine, ...ALL, ...questers, ...young, ...bosses, ...hybrids].map((id) => (
                       <SelectItem key={id} value={id}>
                         <FighterDot def={defOf(id)} />
                         {defOf(id).name}
@@ -757,6 +767,19 @@ export default function Home() {
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
               {ALL.map(chip)}
             </div>
+            <div className="mt-6 flex flex-wrap items-center gap-3" data-arena-me>
+              <Text id="arena.me.title" as="h3" className="font-display text-xl text-foreground" />
+              {!me.id && (
+                <Button variant="ghost" size="sm" className="ml-auto" disabled={locked} onClick={() => enterFromTitle("free")}><Text id="arena.me.make" /></Button>
+              )}
+            </div>
+            {me.id ? (
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+                {mine.map(chip)}
+              </div>
+            ) : (
+              <Text id="arena.me.empty" as="p" className="mt-3 max-w-prose text-sm text-muted-foreground" />
+            )}
             <div className="mt-6 flex flex-wrap items-center gap-3" data-arena-questers>
               <Text id="arena.quest.title" as="h3" className="font-display text-xl text-foreground" />
               <Button asChild variant="ghost" size="sm" className="ml-auto"><Link to="/quests"><Text id="arena.quest.link" /></Link></Button>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { IconType } from "react-icons";
 import {
   PiBuildingsBold, PiCaretLeftBold, PiCaretRightBold, PiDoorOpenBold, PiGameControllerBold, PiHandFistBold,
-  PiHandHeartBold, PiHouseLineBold, PiMoonStarsBold, PiSparkleBold, PiSwordBold, PiTreeBold, PiUsersThreeBold,
+  PiHandHeartBold, PiHouseLineBold, PiMoonStarsBold, PiPencilSimpleBold, PiSparkleBold, PiSwordBold, PiTreeBold, PiUserPlusBold, PiUsersThreeBold,
 } from "react-icons/pi";
 import { Text, useString } from "~stencil/ui/strings";
 import type { StringKey } from "~stencil/types/strings";
@@ -11,7 +11,9 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetTit
 import { PageHeader, Panel, PanelBody, SectionHeading, StatusBadge } from "~/components/design";
 import { FighterDot } from "~/components/fighter-dot";
 import { cn } from "~/lib/utils";
-import { FIGHTERS, bossRosterId, defOf, isNewGen, type FighterDef, type RosterId } from "~/lib/fighters";
+import { FIGHTERS, bossRosterId, defOf, isCustomKey, isNewGen, type FighterDef, type RosterId } from "~/lib/fighters";
+import { useMyFighter } from "~/lib/my-fighter";
+import { CharacterCreator } from "~/components/character-creator";
 import { BOSSES, type BossId } from "~/lib/bosses";
 import { unlockedOf, useQuests } from "~/lib/quests";
 import { useHybrids } from "~/lib/hybrids";
@@ -163,8 +165,11 @@ export function FreeWorld({ music }: { music?: ReactNode }) {
   useEffect(() => setBeaten(bossesBeaten(loadProgress().cleared)), []);
   const reformed = beaten.filter((b) => rehab.includes(b));
   const reformedIds = reformed.map(bossRosterId);
-  /** Everyone who can walk with you: the fighters, quest fighters, new gens and rehabilitated bosses. */
-  const roster = useMemo(() => [...ORIGINALS, ...questers, ...young, ...reformedIds], [questers.join(), young.join(), reformedIds.join()]);
+  const me = useMyFighter();
+  const mine = me.id ? [me.id] : [];
+  /** Everyone who can walk with you: your own character, the fighters, quest fighters, new gens and rehabilitated bosses. */
+  const roster = useMemo(() => [...mine, ...ORIGINALS, ...questers, ...young, ...reformedIds], [me.id, questers.join(), young.join(), reformedIds.join()]);
+  const [creatorOpen, setCreatorOpen] = useState(false);
 
   const [place, setPlace] = useState<PlaceId>("house");
   const [you, setYou] = useState<RosterId>("pyro");
@@ -179,9 +184,11 @@ export function FreeWorld({ music }: { music?: ReactNode }) {
     }
     setLoaded(true);
   }, []);
+  // your character is saved by its whole sheet, so an edited one replaces the old pick
+  const current = (id: RosterId) => (isCustomKey(id) && me.id ? me.id : id);
   // a saved pick that is no longer unlocked (cleared progress) quietly drops out
-  const okYou = roster.includes(you) ? you : "pyro";
-  const okMates = mates.filter((m) => roster.includes(m) && m !== okYou).slice(0, MAX_MATES);
+  const okYou = roster.includes(current(you)) ? current(you) : "pyro";
+  const okMates = mates.map(current).filter((m) => roster.includes(m) && m !== okYou).slice(0, MAX_MATES);
   useEffect(() => {
     if (loaded) saveFree({ you: okYou, mates: okMates, place });
   }, [loaded, okYou, okMates.join(), place]);
@@ -207,7 +214,7 @@ export function FreeWorld({ music }: { music?: ReactNode }) {
   const tagRef = useRef(youTag);
   tagRef.current = youTag;
   const sheetOpen = useRef(false);
-  sheetOpen.current = partyOpen || fightOpen;
+  sheetOpen.current = partyOpen || fightOpen || creatorOpen;
 
   // The world: the place painted once, your party, and anyone strolling by. Rebuilt when the place or party changes.
   useEffect(() => {
@@ -478,6 +485,7 @@ export function FreeWorld({ music }: { music?: ReactNode }) {
   };
 
   const pickGroups: { title: StringKey; ids: RosterId[] }[] = [
+    { title: "free.groups.mine", ids: mine },
     { title: "free.groups.originals", ids: ORIGINALS },
     { title: "free.groups.quest", ids: questers },
     { title: "free.groups.newgen", ids: young },
@@ -588,6 +596,44 @@ export function FreeWorld({ music }: { music?: ReactNode }) {
         </div>
 
         <aside className="flex flex-col gap-6">
+          <section data-free-me>
+            <SectionHeading
+              title={<Text id="free.me.title" />}
+              action={me.spec && (
+                <Button size="sm" variant="ghost" disabled={fighting} onClick={() => setCreatorOpen(true)}>
+                  <PiPencilSimpleBold className="size-5" aria-hidden />
+                  <Text id="free.me.edit" />
+                </Button>
+              )}
+            />
+            <Panel className="mt-3">
+              <PanelBody className="flex flex-col gap-3">
+                {me.id ? (
+                  <>
+                    <div className="flex items-center gap-2 text-sm">
+                      <FighterDot def={defOf(me.id)} className="size-5" />
+                      <span className="min-w-0 truncate font-semibold text-foreground">{defOf(me.id).name}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{defOf(me.id).power}</p>
+                    {okYou !== me.id && (
+                      <Button size="sm" variant="outline" disabled={fighting} onClick={() => { setYou(me.id!); setMates((cur) => cur.filter((m) => !isCustomKey(m))); }}>
+                        <Text id="free.me.play" vars={{ name: defOf(me.id).name }} />
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Text id="free.me.empty" as="p" className="text-sm text-muted-foreground" />
+                    <Button size="sm" disabled={fighting} onClick={() => setCreatorOpen(true)} data-free-make>
+                      <PiUserPlusBold className="size-5" aria-hidden />
+                      <Text id="free.me.make" />
+                    </Button>
+                  </>
+                )}
+              </PanelBody>
+            </Panel>
+          </section>
+
           <section>
             <SectionHeading
               title={<Text id="free.party.title" />}
@@ -650,6 +696,17 @@ export function FreeWorld({ music }: { music?: ReactNode }) {
           </section>
         </aside>
       </div>
+
+      <CharacterCreator
+        open={creatorOpen}
+        onOpenChange={setCreatorOpen}
+        saved={me.spec}
+        powers={[...FIGHTERS.map((f) => f.id), ...quests]}
+        onSaved={(id) => {
+          setYou(id);
+          setMates((cur) => cur.filter((m) => !isCustomKey(m)));
+        }}
+      />
 
       <Sheet open={partyOpen} onOpenChange={setPartyOpen}>
         <SheetContent side="right" className="w-full sm:max-w-lg">

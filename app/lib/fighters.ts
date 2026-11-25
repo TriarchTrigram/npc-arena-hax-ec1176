@@ -104,7 +104,17 @@ export type FighterDef = {
   parents?: [Power, Power];
   /** Set on a Story boss: its own body design. A boss is no fighter's mix; `id` is only the voice and entrance it borrows. */
   boss?: BossDesign;
+  /** Set on the fighter you made in Free World: its name, powers and look. */
+  custom?: CustomSpec;
 };
+
+/** What you wear on the stick figure you made. */
+export type Gear = "scarf" | "cape" | "headband" | "mask" | "none";
+/** How tall your fighter stands. */
+export type Build = "small" | "regular" | "tall";
+/** Which of your powers' colours the body takes: the main colour, the glow, or black with a glowing outline. */
+export type Shade = "main" | "glow" | "dark";
+export type CustomSpec = { name: string; powers: Power[]; gear: Gear; build: Build; shade: Shade };
 
 const M = (m: Omit<Move, "wind" | "act" | "rec"> & Partial<Pick<Move, "wind" | "act" | "rec">>): Move => ({
   wind: 0.18,
@@ -643,6 +653,89 @@ export function withTeamAttack(self: Power, partner: Power): FighterDef {
   return { ...D, moves: [...D.moves, move] };
 }
 
+// ---------- Your own fighter (Free World's character creator) ----------
+// The powers decide everything that is not a choice of look: the first power is the main one (its colour, voice,
+// role and stance), the second lends its glow, and each power brings some of its own fighter's moves, drawn in its
+// element. Two signature moves mix the first two powers (or double down on a single one).
+
+export const GEARS: Gear[] = ["scarf", "cape", "headband", "mask", "none"];
+export const BUILDS: Build[] = ["small", "regular", "tall"];
+export const SHADES: Shade[] = ["main", "glow", "dark"];
+export const MAX_CUSTOM_POWERS = 3;
+export const MAX_NAME = 16;
+const ROLE_HP: Record<Role, number> = { attacker: 100, control: 100, tank: 120, support: 105, trickster: 95 };
+const BUILD_HP: Record<Build, number> = { small: -8, regular: 0, tall: 10 };
+const BUILD_SPEED: Record<Build, number> = { small: 8, regular: 0, tall: -6 };
+
+function signatureMoves(a: Power, b: Power): Move[] {
+  const wa = WINGS[a], wb = WINGS[b];
+  const stA = wa.status ? { status: wa.status, statusDur: wa.statusDur } : {};
+  const stB = wb.status ? { status: wb.status, statusDur: wb.statusDur } : {};
+  const one = a === b;
+  return [
+    M({ id: `sig-comet-${a}-${b}`, name: one ? `${wa.word} Comet` : `${wa.word} ${wb.word} Comet`, kind: "projectile", anim: "cast", power: one ? a : b, range: 580, minRange: 80, cd: 3.2, dmg: 13, speed: 560, size: 16, shape: wb.shape, pierce: true, kb: 260, wind: 0.25, ...stB }),
+    M({ id: `sig-nova-${a}-${b}`, name: one ? `${wa.word} Nova` : `${wb.word} ${wa.word} Nova`, kind: "burst", anim: "slam", power: a, range: 150, cd: 6.5, dmg: 15, radius: 165, kb: 400, lift: -320, heal: wa.heal ?? wb.heal, wind: 0.3, rec: 0.35, ...stA }),
+  ];
+}
+
+/** A tidy copy of a character: a real name, one to three different powers, known look choices. Null when it has no power. */
+export function cleanSpec(raw: Partial<CustomSpec> | null | undefined): CustomSpec | null {
+  if (!raw) return null;
+  const powers = [...new Set((Array.isArray(raw.powers) ? raw.powers : []).filter((p): p is Power => typeof p === "string" && isPower(p)))].slice(0, MAX_CUSTOM_POWERS);
+  if (powers.length === 0) return null;
+  const name = (typeof raw.name === "string" ? raw.name : "").replace(/\s+/g, " ").trim().slice(0, MAX_NAME);
+  return {
+    name,
+    powers,
+    gear: GEARS.includes(raw.gear as Gear) ? (raw.gear as Gear) : "scarf",
+    build: BUILDS.includes(raw.build as Build) ? (raw.build as Build) : "regular",
+    shade: SHADES.includes(raw.shade as Shade) ? (raw.shade as Shade) : "main",
+  };
+}
+
+/** The fighter a character sheet makes. `fallbackName` stands in while the name is blank. */
+export function customOf(spec: CustomSpec, fallbackName = "You"): FighterDef {
+  const [a, b = a] = spec.powers;
+  const A = DEF_BY_ID[a], B = DEF_BY_ID[b];
+  const per = spec.powers.length === 1 ? 6 : spec.powers.length === 2 ? 3 : 2;
+  const own = spec.powers.flatMap((p) => DEF_BY_ID[p].moves.slice(0, per).map((m) => (p === a ? m : { ...m, power: p })));
+  const speed = Math.round(spec.powers.reduce((s, p) => s + DEF_BY_ID[p].speed, 0) / spec.powers.length) + BUILD_SPEED[spec.build];
+  const dark = "hsl(250 22% 10%)";
+  return {
+    ...A,
+    name: spec.name || fallbackName,
+    power: spec.powers.map((p) => DEF_BY_ID[p].power).join(", "),
+    ability: spec.powers.length === 1 ? `Made by you, with ${A.power}.` : `Made by you, with ${spec.powers.map((p) => DEF_BY_ID[p].power).join(" and ")}.`,
+    color: A.color,
+    glow: B.glow,
+    body: spec.shade === "glow" ? A.glow : spec.shade === "dark" ? dark : undefined,
+    outline: spec.shade === "dark" ? A.color : undefined,
+    hp: ROLE_HP[A.role] + BUILD_HP[spec.build],
+    speed,
+    moves: [...own, ...signatureMoves(a, b)],
+    parents: undefined,
+    boss: undefined,
+    custom: spec,
+  };
+}
+
+/** The roster id your fighter is picked by. The whole sheet rides in it, so any screen can rebuild the fighter. */
+export function customKey(spec: CustomSpec): RosterId {
+  return ["me", encodeURIComponent(spec.name), spec.powers.join("."), spec.gear, spec.build, spec.shade].join("|");
+}
+export const isCustomKey = (id: string) => id.startsWith("me|");
+function parseCustomKey(id: string): CustomSpec | null {
+  if (!isCustomKey(id)) return null;
+  const [, name, powers, gear, build, shade] = id.split("|");
+  let decoded = "";
+  try {
+    decoded = decodeURIComponent(name ?? "");
+  } catch {
+    decoded = "";
+  }
+  return cleanSpec({ name: decoded, powers: (powers ?? "").split(".") as Power[], gear: gear as Gear, build: build as Build, shade: shade as Shade });
+}
+
 // ---------- Roster ids ----------
 // An original fighter is picked by its power id; a hybrid by its pair key ("lux+umbra", "pyro+pyro");
 // a Story boss, once beaten, by "boss:<id>" (its power id is only the voice it borrows, and two bosses share one).
@@ -668,7 +761,7 @@ const bossOfRosterId = (id: RosterId): BossId | null => {
 
 /** The id a fighter is picked, saved and crowned by. */
 export const rosterIdOf = (d: FighterDef): RosterId =>
-  d.boss ? bossRosterId(BOSS_OF_DESIGN[d.boss]) : d.parents ? hybridKey(d.parents[0], d.parents[1]) : d.id;
+  d.custom ? customKey(d.custom) : d.boss ? bossRosterId(BOSS_OF_DESIGN[d.boss]) : d.parents ? hybridKey(d.parents[0], d.parents[1]) : d.id;
 
 const isPower = (x: string): x is Power => x in DEF_BY_ID;
 
@@ -680,15 +773,16 @@ export function parseHybridKey(key: string): [Power, Power] | null {
 }
 
 const hybridCache = new Map<RosterId, FighterDef>();
-/** The fighter behind any roster id: an original, a beaten boss, or the hybrid its pair key makes. */
+/** The fighter behind any roster id: an original, a beaten boss, the fighter you made, or the hybrid its pair key makes. */
 export function defOf(id: RosterId): FighterDef {
   if (isPower(id)) return DEF_BY_ID[id];
   const boss = bossOfRosterId(id);
   if (boss) return BOSSES[boss];
   let d = hybridCache.get(id);
   if (!d) {
-    const pair = parseHybridKey(id);
-    d = pair ? hybridOf(pair[0], pair[1]) : DEF_BY_ID.pyro;
+    const mine = parseCustomKey(id);
+    const pair = mine ? null : parseHybridKey(id);
+    d = mine ? customOf(mine) : pair ? hybridOf(pair[0], pair[1]) : DEF_BY_ID.pyro;
     hybridCache.set(id, d);
   }
   return d;
