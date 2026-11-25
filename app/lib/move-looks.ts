@@ -7,7 +7,9 @@ export type PShape =
 
 type HitLook =
   | "flare" | "shatter" | "fork" | "crater" | "swirl" | "splash" | "slash" | "starburst" | "implode"
-  | "sprout" | "bite" | "clock" | "sparks" | "ripple" | "splat" | "cross" | "fizz" | "portal";
+  | "sprout" | "bite" | "clock" | "sparks" | "ripple" | "splat" | "cross" | "fizz" | "portal"
+  /** An invented power's move: drawn from its own design (see designLook). */
+  | "own";
 
 export type Look = {
   /** Body colour and highlight. */
@@ -499,13 +501,6 @@ for (const [id, lk] of Object.entries(FORM_LOOKS)) {
 /** The signature drawing a move uses: its own, or the one it borrows. */
 const sigOf = (id: string) => LOOKS[id]?.sig ?? id;
 
-/** A power you invented in the character creator: each of its moves borrows another move's drawing, in its own colours and particles. */
-export function borrowLook(id: string, from: string, a: string, b: string, p?: PShape) {
-  const base = LOOKS[from];
-  if (!base || LOOKS[id]?.a === a && LOOKS[id]?.b === b && LOOKS[id]?.p === (p ?? base.p)) return;
-  LOOKS[id] = { ...base, a, b, p: p ?? base.p, sig: sigOf(from) };
-}
-
 /** A one-off effect: a move's signature when it fires (hit = false) or its mark on whoever it struck (hit = true). */
 export type Fx = { id: string; hit: boolean; x: number; y: number; dir: number; size: number; life: number; max: number; seed: number; reach: number; tint?: Tint };
 
@@ -784,7 +779,11 @@ export function drawFx(ctx: CanvasRenderingContext2D, fx: Fx, t: number) {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.translate(fx.x, fx.y);
-  if (fx.hit) drawHit(ctx, lk.hit, a, b, s, k, e, fade, fx.seed, fx.dir);
+  const od = OWN_DRAW[fx.id];
+  if (od) {
+    if (fx.hit) drawOwnHit(ctx, od, a, b, s, k, e, fade, fx.seed);
+    else drawOwnCast(ctx, od, fx, a, b, s, k, e, fade, t);
+  } else if (fx.hit) drawHit(ctx, lk.hit, a, b, s, k, e, fade, fx.seed, fx.dir);
   else drawCast(ctx, fx, a, b, s, k, e, fade, t);
   ctx.restore();
 }
@@ -1825,6 +1824,10 @@ export function drawShotLook(ctx: CanvasRenderingContext2D, id: string, p: Shot,
   const lk = lookOf(id);
   if (!lk) return false;
   const { a, b } = lk;
+  if (OWN_DRAW[id]) {
+    drawOwnShot(ctx, OWN_DRAW[id], a, b, p, t);
+    return true;
+  }
   const r = p.r;
   const ang = Math.atan2(p.vy, p.vx);
   const dir = p.vx >= 0 ? 1 : -1;
@@ -2413,6 +2416,10 @@ export function drawBeamLook(ctx: CanvasRenderingContext2D, id: string, bm: Beam
   const lk = lookOf(id);
   if (!lk) return false;
   const { a, b } = lk;
+  if (OWN_DRAW[id]) {
+    drawOwnBeam(ctx, OWN_DRAW[id], a, b, bm, alpha, t);
+    return true;
+  }
   const w = bm.width;
   const len = bm.len;
   ctx.save();
@@ -2841,6 +2848,10 @@ export function drawEruptionLook(ctx: CanvasRenderingContext2D, id: string, x: n
   const lk = lookOf(id);
   if (!lk) return false;
   const { a, b } = lk;
+  if (OWN_DRAW[id]) {
+    drawOwnEruption(ctx, OWN_DRAW[id], a, b, x, gy, r, h, t);
+    return true;
+  }
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -3107,6 +3118,10 @@ export function drawZoneLook(ctx: CanvasRenderingContext2D, id: string, x: numbe
   const lk = lookOf(id);
   if (!lk) return false;
   const { a, b } = lk;
+  if (OWN_DRAW[id]) {
+    drawOwnZone(ctx, OWN_DRAW[id], a, b, x, gy, r, alpha, t);
+    return true;
+  }
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.lineCap = "round";
@@ -3480,6 +3495,10 @@ export function drawRushLook(ctx: CanvasRenderingContext2D, id: string, x: numbe
   const lk = lookOf(id);
   if (!lk) return;
   const { a, b } = lk;
+  if (OWN_DRAW[id]) {
+    drawOwnRush(ctx, OWN_DRAW[id], a, b, x, y, s, dir, t);
+    return;
+  }
   ctx.save();
   ctx.lineCap = "round";
   switch (sigOf(id)) {
@@ -3544,4 +3563,489 @@ export function drawRushLook(ctx: CanvasRenderingContext2D, id: string, x: numbe
       break;
   }
   ctx.restore();
+}
+
+// ---------- invented powers' own moves ----------
+// A power typed into the character creator gets moves of its own. For each move the AI picks a shape, how it travels,
+// the trail it leaves and how it bursts on a hit, and the drawings below build the move from those choices, in the
+// move's own colours. None of them reuses a fighter's hand-drawn signature.
+
+export const OWN_GLYPHS = ["orb", "star", "crescent", "diamond", "spiral", "ring", "arrow", "fang", "cube", "heart", "eye", "flower", "hex", "cross", "drop", "feather"] as const;
+export type OwnGlyph = (typeof OWN_GLYPHS)[number];
+export const OWN_TRAILS = ["none", "streak", "dots", "ribbon", "sparkle", "echo"] as const;
+export type OwnTrail = (typeof OWN_TRAILS)[number];
+export const OWN_MOTIONS = ["steady", "spin", "wobble", "pulse"] as const;
+export type OwnMotion = (typeof OWN_MOTIONS)[number];
+export const OWN_BURSTS = ["scatter", "ring", "spiral", "fountain", "crack"] as const;
+export type OwnBurst = (typeof OWN_BURSTS)[number];
+
+/** How one invented move is drawn. `kind` is the move's kind, so its cast effect fits what it does. */
+export type OwnDraw = { kind: string; glyph: OwnGlyph; trail: OwnTrail; motion: OwnMotion; burst: OwnBurst };
+const OWN_DRAW: Record<string, OwnDraw> = {};
+const SPARK_GRAV: Partial<Record<PShape, number>> = { drop: 700, chunk: 900, shard: 400, flake: 60, ember: -200, smoke: -60, bubble: -80, leaf: -40, petal: 40, dust: -30 };
+const WHITE = "hsl(0 0% 100%)";
+const CAST_AT: Record<string, Look["cast"]> = {
+  melee: "hand", projectile: "hand", beam: "hand", pull: "hand", burst: "body", heal: "body", blink: "body", dash: "body", zone: "feet", eruption: "feet", rain: "sky",
+};
+
+/** Registers an invented move's look: its colours, particles and its own drawing. */
+export function designLook(id: string, a: string, b: string, p: PShape, d: OwnDraw) {
+  const prev = LOOKS[id];
+  const same = OWN_DRAW[id];
+  if (prev && same && prev.a === a && prev.b === b && prev.p === p && same.glyph === d.glyph && same.trail === d.trail && same.motion === d.motion && same.burst === d.burst && same.kind === d.kind) return;
+  const light = Number(/(\d+(?:\.\d+)?)%\)$/.exec(a)?.[1] ?? 50) >= 36;
+  const cast = CAST_AT[d.kind] ?? "hand";
+  LOOKS[id] = { a, b, p, add: light, grav: SPARK_GRAV[p] ?? 0, hit: "own", cast, castLife: cast === "sky" ? 1 : cast === "hand" ? 0.3 : 0.55 };
+  OWN_DRAW[id] = d;
+}
+
+/** A glyph's turn for its motion: along its path, spinning, or rocking. */
+function spinOf(m: OwnMotion, base: number, t: number, seed = 0) {
+  return m === "spin" ? t * 10 + seed : m === "wobble" ? base + Math.sin(t * 14 + seed) * 0.5 : base;
+}
+const pulseOf = (m: OwnMotion, t: number, seed = 0) => (m === "pulse" ? 1 + 0.2 * Math.sin(t * 16 + seed) : 1);
+
+/** One glyph centred on (0, 0) pointing along +x, `r` its radius. */
+function drawGlyph(ctx: CanvasRenderingContext2D, g: OwnGlyph, r: number, a: string, b: string) {
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.fillStyle = a;
+  ctx.strokeStyle = b;
+  ctx.lineWidth = Math.max(1.5, r * 0.16);
+  const fs = () => { ctx.fill(); ctx.stroke(); };
+  switch (g) {
+    case "orb":
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); fs();
+      ctx.fillStyle = al(WHITE, 0.7);
+      ctx.beginPath(); ctx.arc(-r * 0.3, -r * 0.3, r * 0.3, 0, TAU); ctx.fill();
+      break;
+    case "star":
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) { const an = (i / 10) * TAU; const rr = i % 2 ? r * 0.45 : r * 1.15; ctx.lineTo(Math.cos(an) * rr, Math.sin(an) * rr); }
+      ctx.closePath(); fs();
+      break;
+    case "crescent":
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 1.1, -1.9, 1.9);
+      ctx.arc(-r * 0.6, 0, r * 1.07, 1.335, -1.335, true);
+      ctx.closePath(); fs();
+      break;
+    case "diamond":
+      ctx.beginPath(); ctx.moveTo(r * 1.35, 0); ctx.lineTo(0, r * 0.62); ctx.lineTo(-r * 0.95, 0); ctx.lineTo(0, -r * 0.62); ctx.closePath(); fs();
+      ctx.strokeStyle = al(WHITE, 0.6); ctx.lineWidth = Math.max(1, r * 0.08);
+      ctx.beginPath(); ctx.moveTo(r * 1.1, 0); ctx.lineTo(-r * 0.6, 0); ctx.stroke();
+      break;
+    case "spiral":
+      for (const [c, w] of [[a, 0.3], [b, 0.12]] as const) {
+        ctx.strokeStyle = c; ctx.lineWidth = Math.max(1.5, r * w);
+        ctx.beginPath();
+        for (let i = 0; i <= 36; i++) { const an = i * 0.38; const rr = (r * 1.15 * i) / 36; ctx.lineTo(Math.cos(an) * rr, Math.sin(an) * rr); }
+        ctx.stroke();
+      }
+      break;
+    case "ring":
+      ctx.strokeStyle = a; ctx.lineWidth = Math.max(2, r * 0.36);
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = b; ctx.lineWidth = Math.max(1, r * 0.1); ctx.stroke();
+      break;
+    case "arrow":
+      ctx.strokeStyle = a; ctx.lineWidth = Math.max(1.5, r * 0.26);
+      ctx.beginPath(); ctx.moveTo(-r * 1.3, 0); ctx.lineTo(r * 0.4, 0); ctx.stroke();
+      ctx.strokeStyle = b; ctx.lineWidth = Math.max(1, r * 0.14);
+      ctx.beginPath();
+      for (const sd of [-1, 1]) { ctx.moveTo(-r * 1.3, 0); ctx.lineTo(-r * 1.6, sd * r * 0.4); ctx.moveTo(-r * 1, 0); ctx.lineTo(-r * 1.3, sd * r * 0.4); }
+      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(r * 1.3, 0); ctx.lineTo(r * 0.15, r * 0.62); ctx.lineTo(r * 0.4, 0); ctx.lineTo(r * 0.15, -r * 0.62); ctx.closePath();
+      ctx.lineWidth = Math.max(1.5, r * 0.12); fs();
+      break;
+    case "fang":
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.8, -r * 0.6);
+      ctx.quadraticCurveTo(r * 0.7, -r * 0.55, r * 1.25, r * 0.55);
+      ctx.quadraticCurveTo(r * 0.2, r * 0.05, -r * 0.8, r * 0.55);
+      ctx.closePath(); fs();
+      break;
+    case "cube":
+      ctx.beginPath(); ctx.rect(-r * 0.7, -r * 0.5, r * 1.2, r * 1.2); fs();
+      ctx.fillStyle = al(b, 0.75);
+      ctx.beginPath(); ctx.moveTo(-r * 0.7, -r * 0.5); ctx.lineTo(-r * 0.3, -r * 0.9); ctx.lineTo(r * 0.9, -r * 0.9); ctx.lineTo(r * 0.5, -r * 0.5); ctx.closePath(); fs();
+      ctx.fillStyle = a;
+      ctx.beginPath(); ctx.moveTo(r * 0.5, -r * 0.5); ctx.lineTo(r * 0.9, -r * 0.9); ctx.lineTo(r * 0.9, r * 0.3); ctx.lineTo(r * 0.5, r * 0.7); ctx.closePath(); fs();
+      break;
+    case "heart":
+      ctx.save();
+      ctx.rotate(-Math.PI / 2);
+      ctx.beginPath();
+      ctx.moveTo(0, r * 1.1);
+      ctx.bezierCurveTo(-r * 1.3, r * 0.15, -r * 0.95, -r * 1.0, 0, -r * 0.35);
+      ctx.bezierCurveTo(r * 0.95, -r * 1.0, r * 1.3, r * 0.15, 0, r * 1.1);
+      ctx.closePath(); fs();
+      ctx.restore();
+      break;
+    case "eye":
+      ctx.fillStyle = b;
+      ctx.strokeStyle = a;
+      ctx.beginPath(); ctx.moveTo(-r * 1.2, 0); ctx.quadraticCurveTo(0, -r * 1.05, r * 1.2, 0); ctx.quadraticCurveTo(0, r * 1.05, -r * 1.2, 0); ctx.closePath(); fs();
+      ctx.fillStyle = a; ctx.beginPath(); ctx.arc(0, 0, r * 0.42, 0, TAU); ctx.fill();
+      ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(0, 0, r * 0.18, 0, TAU); ctx.fill();
+      break;
+    case "flower":
+      for (let i = 0; i < 5; i++) {
+        const an = (i / 5) * TAU;
+        ctx.beginPath(); ctx.ellipse(Math.cos(an) * r * 0.55, Math.sin(an) * r * 0.55, r * 0.55, r * 0.3, an, 0, TAU); fs();
+      }
+      ctx.fillStyle = b; ctx.beginPath(); ctx.arc(0, 0, r * 0.32, 0, TAU); ctx.fill();
+      break;
+    case "hex":
+      poly(ctx, 0, 0, r, 6, 0); fs();
+      ctx.strokeStyle = al(b, 0.7); ctx.lineWidth = Math.max(1, r * 0.1);
+      poly(ctx, 0, 0, r * 0.55, 6, Math.PI / 6); ctx.stroke();
+      break;
+    case "cross": {
+      const w = r * 0.24;
+      ctx.beginPath();
+      ctx.moveTo(-w, -r); ctx.lineTo(w, -r); ctx.lineTo(w, -w); ctx.lineTo(r, -w); ctx.lineTo(r, w); ctx.lineTo(w, w);
+      ctx.lineTo(w, r); ctx.lineTo(-w, r); ctx.lineTo(-w, w); ctx.lineTo(-r, w); ctx.lineTo(-r, -w); ctx.lineTo(-w, -w);
+      ctx.closePath(); fs();
+      break;
+    }
+    case "drop":
+      ctx.beginPath(); ctx.arc(r * 0.25, 0, r * 0.78, -2.2, 2.2); ctx.lineTo(-r * 1.35, 0); ctx.closePath(); fs();
+      ctx.fillStyle = al(WHITE, 0.6); ctx.beginPath(); ctx.arc(r * 0.45, -r * 0.25, r * 0.2, 0, TAU); ctx.fill();
+      break;
+    case "feather":
+      ctx.beginPath(); ctx.moveTo(-r * 1.1, 0); ctx.quadraticCurveTo(0, -r * 0.8, r * 1.3, 0); ctx.quadraticCurveTo(0, r * 0.5, -r * 1.1, 0); ctx.closePath(); fs();
+      ctx.strokeStyle = al(b, 0.9); ctx.lineWidth = Math.max(1, r * 0.08);
+      ctx.beginPath(); ctx.moveTo(-r * 1.5, 0); ctx.lineTo(r * 1.2, 0);
+      for (let i = 1; i < 5; i++) { const x = -r * 0.8 + i * r * 0.4; ctx.moveTo(x, 0); ctx.lineTo(x - r * 0.25, -r * 0.4); }
+      ctx.stroke();
+      break;
+  }
+}
+
+/** A glyph with a soft glow behind it, at (x, y), turned by `rot`. */
+function glyphAt(ctx: CanvasRenderingContext2D, g: OwnGlyph, x: number, y: number, r: number, rot: number, a: string, b: string) {
+  if (r <= 0.5) return;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalCompositeOperation = "lighter";
+  glow(ctx, 0, 0, r * 2.1, b, 0.32);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.rotate(rot);
+  drawGlyph(ctx, g, r, a, b);
+  ctx.restore();
+}
+
+/** What a shot leaves behind it: from (x, y) back along (bx, by). */
+function ownTrail(ctx: CanvasRenderingContext2D, d: OwnDraw, x: number, y: number, bx: number, by: number, r: number, a: string, b: string, t: number) {
+  const nx = -by, ny = bx;
+  ctx.save();
+  switch (d.trail) {
+    case "streak": {
+      ctx.globalCompositeOperation = "lighter";
+      const ex = x + bx * r * 5.5, ey = y + by * r * 5.5;
+      const gr = ctx.createLinearGradient(x, y, ex, ey);
+      gr.addColorStop(0, al(b, 0.75));
+      gr.addColorStop(1, al(b, 0));
+      ctx.strokeStyle = gr;
+      ctx.lineWidth = r * 1.3;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.strokeStyle = al(a, 0.8);
+      ctx.lineWidth = r * 0.4;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + bx * r * 3.5, y + by * r * 3.5); ctx.stroke();
+      break;
+    }
+    case "dots":
+      for (let i = 1; i <= 4; i++) {
+        ctx.fillStyle = al(i % 2 ? b : a, 0.85 - i * 0.17);
+        ctx.beginPath(); ctx.arc(x + bx * r * 1.35 * i, y + by * r * 1.35 * i, r * (0.5 - i * 0.08), 0, TAU); ctx.fill();
+      }
+      break;
+    case "ribbon":
+      ctx.lineCap = "round";
+      for (const sd of [-1, 1]) {
+        ctx.strokeStyle = al(sd > 0 ? b : a, 0.8);
+        ctx.lineWidth = Math.max(1.5, r * 0.28);
+        ctx.beginPath();
+        for (let j = 0; j <= 14; j++) {
+          const u = j / 14;
+          const along = r * 6 * u, off = sd * Math.sin(u * 9 - t * 22) * r * 0.7 * (1 - u * 0.6);
+          ctx.lineTo(x + bx * along + nx * off, y + by * along + ny * off);
+        }
+        ctx.stroke();
+      }
+      break;
+    case "sparkle":
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = b;
+      for (let i = 0; i < 6; i++) {
+        const along = r * (1.2 + i * 0.9), off = (noise(i, Math.floor(t * 14)) - 0.5) * r * 2;
+        star4(ctx, x + bx * along + nx * off, y + by * along + ny * off, r * (0.55 - i * 0.06), 0.25, t * 4 + i);
+        ctx.fill();
+      }
+      break;
+    case "echo":
+      for (let i = 1; i <= 3; i++) {
+        ctx.globalAlpha = 0.55 / i;
+        glyphAt(ctx, d.glyph, x + bx * r * 1.6 * i, y + by * r * 1.6 * i, r * (1 - i * 0.15), spinOf(d.motion, Math.atan2(-by, -bx), t - i * 0.05), a, b);
+      }
+      break;
+    case "none":
+      break;
+  }
+  ctx.restore();
+}
+
+function drawOwnShot(ctx: CanvasRenderingContext2D, d: OwnDraw, a: string, b: string, p: Shot, t: number) {
+  const ang = Math.atan2(p.vy, p.vx);
+  const cx = Math.cos(ang), cy = Math.sin(ang);
+  const wob = d.motion === "wobble" ? Math.sin(t * 18) * p.r * 0.5 : 0;
+  const x = p.x - cy * wob, y = p.y + cx * wob;
+  ownTrail(ctx, d, x, y, -cx, -cy, p.r, a, b, t);
+  glyphAt(ctx, d.glyph, x, y, p.r * pulseOf(d.motion, t), spinOf(d.motion, ang, t), a, b);
+}
+
+function drawOwnBeam(ctx: CanvasRenderingContext2D, d: OwnDraw, a: string, b: string, bm: BeamShape, alpha: number, t: number) {
+  const w = Math.max(8, bm.width), len = bm.len;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.lineCap = "round";
+  ctx.translate(bm.x, bm.y);
+  ctx.rotate(bm.ang);
+  ctx.globalCompositeOperation = "lighter";
+  ctx.strokeStyle = al(b, 0.3);
+  ctx.lineWidth = w * 1.7;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, 0); ctx.stroke();
+  switch (d.trail) {
+    case "ribbon":
+      for (const sd of [-1, 1]) {
+        ctx.strokeStyle = sd > 0 ? b : a;
+        ctx.lineWidth = w * 0.22;
+        ctx.beginPath();
+        for (let xx = 0; xx <= len; xx += 6) ctx.lineTo(xx, sd * Math.sin(xx / (w * 1.4) - t * 30) * w * 0.5);
+        ctx.stroke();
+      }
+      break;
+    case "dots": {
+      const gap = w * 0.95, off = (t * w * 14) % gap;
+      ctx.fillStyle = b;
+      for (let xx = off; xx < len; xx += gap) { ctx.beginPath(); ctx.arc(xx, 0, w * 0.24, 0, TAU); ctx.fill(); }
+      break;
+    }
+    case "sparkle":
+      ctx.strokeStyle = al(a, 0.8);
+      ctx.lineWidth = w * 0.3;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, 0); ctx.stroke();
+      ctx.fillStyle = b;
+      for (let i = 0; i < 10; i++) {
+        star4(ctx, len * noise(i, Math.floor(t * 16)), (noise(i, 7 + Math.floor(t * 16)) - 0.5) * w * 1.8, w * 0.35, 0.25, t * 5 + i);
+        ctx.fill();
+      }
+      break;
+    default:
+      ctx.strokeStyle = a;
+      ctx.lineWidth = w * 0.55;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, 0); ctx.stroke();
+      ctx.strokeStyle = WHITE;
+      ctx.lineWidth = Math.max(1.5, w * 0.14);
+      ctx.stroke();
+  }
+  ctx.globalCompositeOperation = "source-over";
+  const gap = w * 2.3, off = (t * w * 10) % gap;
+  const gr = w * (d.trail === "echo" ? 0.55 : 0.42);
+  for (let xx = off + gap * 0.5; xx < len - w; xx += gap) {
+    const wob = d.motion === "wobble" ? Math.sin(xx / w - t * 18) * w * 0.4 : 0;
+    glyphAt(ctx, d.glyph, xx, wob, gr * pulseOf(d.motion, t, xx), spinOf(d.motion, 0, t, xx), a, b);
+  }
+  glyphAt(ctx, d.glyph, len, 0, w * 0.75 * pulseOf(d.motion, t), spinOf(d.motion, 0, t), a, b);
+  ctx.restore();
+}
+
+function drawOwnEruption(ctx: CanvasRenderingContext2D, d: OwnDraw, a: string, b: string, x: number, gy: number, r: number, h: number, t: number) {
+  if (h <= 1) return;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  glow(ctx, x, gy - h * 0.45, r * 1.5, b, 0.35);
+  const gr = ctx.createLinearGradient(0, gy, 0, gy - h);
+  gr.addColorStop(0, al(a, 0.7));
+  gr.addColorStop(1, al(b, 0));
+  ctx.fillStyle = gr;
+  ctx.beginPath();
+  ctx.moveTo(x - r * 0.55, gy);
+  ctx.quadraticCurveTo(x - r * 0.4, gy - h * 0.6, x, gy - h);
+  ctx.quadraticCurveTo(x + r * 0.4, gy - h * 0.6, x + r * 0.55, gy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalCompositeOperation = "source-over";
+  const n = Math.max(2, Math.round(h / (r * 0.95)));
+  for (let i = 0; i < n; i++) {
+    const u = (i + 0.5) / n;
+    const wob = d.motion === "wobble" ? Math.sin(t * 16 + i) * r * 0.3 : d.trail === "ribbon" ? Math.sin(u * 7 + t * 10) * r * 0.35 : 0;
+    glyphAt(ctx, d.glyph, x + wob, gy - u * h, r * 0.48 * (1 - u * 0.35) * pulseOf(d.motion, t, i), spinOf(d.motion, -Math.PI / 2, t, i), a, b);
+  }
+  ctx.restore();
+}
+
+function drawOwnZone(ctx: CanvasRenderingContext2D, d: OwnDraw, a: string, b: string, x: number, gy: number, r: number, alpha: number, t: number) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const pu = d.motion === "pulse" ? 1 + 0.06 * Math.sin(t * 8) : 1;
+  ctx.globalCompositeOperation = "lighter";
+  glow(ctx, x, gy - r * 0.35, r * 1.1, b, 0.18);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = al(a, 0.32);
+  ctx.strokeStyle = b;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.ellipse(x, gy + 2, r * pu, 15, 0, 0, TAU); ctx.fill(); ctx.stroke();
+  if (d.trail !== "none") {
+    ctx.strokeStyle = al(a, 0.7);
+    ctx.setLineDash(d.trail === "dots" ? [3, 9] : [14, 10]);
+    ctx.lineDashOffset = -t * 40;
+    ctx.beginPath(); ctx.ellipse(x, gy + 2, r * 0.7 * pu, 10, 0, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  const n = 5;
+  const speed = d.motion === "spin" ? 1.8 : 0.7;
+  for (let i = 0; i < n; i++) {
+    const an = t * speed + (i / n) * TAU;
+    const bob = Math.sin(t * 3 + i * 1.7) * 8;
+    glyphAt(ctx, d.glyph, x + Math.cos(an) * r * 0.8, gy - 34 - Math.sin(an) * 12 + bob, 10 * pulseOf(d.motion, t, i), spinOf(d.motion, -Math.PI / 2, t, i), a, b);
+  }
+  for (let i = 0; i < 4; i++) {
+    const rise = (t * 38 + i * 41) % (r * 1.1);
+    ctx.globalAlpha = alpha * (1 - rise / (r * 1.1));
+    glyphAt(ctx, d.glyph, x + (noise(i, 3) - 0.5) * r * 1.2, gy - 10 - rise, 5, spinOf(d.motion, -Math.PI / 2, t, i), a, b);
+  }
+  ctx.restore();
+}
+
+function drawOwnRush(ctx: CanvasRenderingContext2D, d: OwnDraw, a: string, b: string, x: number, y: number, s: number, dir: number, t: number) {
+  const cy = y - 55 * s;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.strokeStyle = al(b, 0.6);
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const yy = cy + (i - 2) * 20 * s;
+    const l = (50 + noise(i, Math.floor(t * 30)) * 60) * s;
+    ctx.moveTo(x - dir * 24 * s, yy); ctx.lineTo(x - dir * (24 * s + l), yy);
+  }
+  ctx.stroke();
+  ctx.globalCompositeOperation = "source-over";
+  for (let i = 3; i >= 1; i--) {
+    ctx.globalAlpha = 0.85 - i * 0.2;
+    glyphAt(ctx, d.glyph, x - dir * (20 + i * 32) * s, cy, 20 * s * (1 - i * 0.18), spinOf(d.motion, dir > 0 ? 0 : Math.PI, t, i), a, b);
+  }
+  ctx.globalAlpha = 1;
+  glyphAt(ctx, d.glyph, x + dir * 30 * s, cy, 18 * s * pulseOf(d.motion, t), spinOf(d.motion, dir > 0 ? 0 : Math.PI, t), a, b);
+  ctx.restore();
+}
+
+/** The move firing: a glyph blooming at the hand, a ring of glyphs from the body, a circle at the feet, a sigil in the sky. */
+function drawOwnCast(ctx: CanvasRenderingContext2D, d: OwnDraw, fx: Fx, a: string, b: string, s: number, k: number, e: number, fade: number, t: number) {
+  const dir = fx.dir;
+  ctx.globalAlpha = fade;
+  const cast = CAST_AT[d.kind] ?? "hand";
+  if (cast === "hand") {
+    ctx.strokeStyle = b;
+    ctx.lineWidth = 3 * (1 - k) + 1;
+    ctx.beginPath(); ctx.arc(dir * 10 * s, 0, 26 * s * e, 0, TAU); ctx.stroke();
+    glyphAt(ctx, d.glyph, dir * 16 * s * e, 0, 14 * s * (0.4 + e * 0.8), spinOf(d.motion, dir > 0 ? 0 : Math.PI, t), a, b);
+    return;
+  }
+  if (cast === "sky") {
+    const R = 62 * s * (0.5 + e * 0.5);
+    ctx.strokeStyle = b;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = al(a, 0.8);
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.7, 0, TAU); ctx.stroke();
+    for (let i = 0; i < 6; i++) {
+      const an = (i / 6) * TAU + t * 1.5;
+      glyphAt(ctx, d.glyph, Math.cos(an) * R * 0.85, Math.sin(an) * R * 0.85, 8 * s, an, a, b);
+    }
+    glyphAt(ctx, d.glyph, 0, 0, 20 * s, spinOf(d.motion, Math.PI / 2, t), a, b);
+    return;
+  }
+  if (cast === "feet") {
+    ctx.strokeStyle = b;
+    ctx.lineWidth = 3 * (1 - k) + 1;
+    ctx.beginPath(); ctx.ellipse(0, 0, 90 * s * e, 14 * s * e + 2, 0, 0, TAU); ctx.stroke();
+    for (let i = 0; i < 5; i++) {
+      const u = (i / 4 - 0.5) * 2;
+      glyphAt(ctx, d.glyph, u * 70 * s * e, -30 * s * e * (1 - Math.abs(u) * 0.5), 9 * s, -Math.PI / 2, a, b);
+    }
+    return;
+  }
+  // from the body
+  if (d.kind === "heal") {
+    for (let i = 0; i < 7; i++) {
+      const an = (i / 7) * TAU + t * 2;
+      glyphAt(ctx, d.glyph, Math.cos(an) * 38 * s, Math.sin(an) * 12 * s - e * 70 * s + 30 * s, 9 * s, -Math.PI / 2, a, b);
+    }
+    return;
+  }
+  const reach = d.kind === "burst" ? Math.min(fx.reach || 140 * s, 220 * s) : 70 * s;
+  const R = d.kind === "blink" ? reach * (1 - e * 0.7) : reach * e;
+  ctx.strokeStyle = b;
+  ctx.lineWidth = 5 * (1 - k) + 1;
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke();
+  const twist = d.burst === "spiral" || d.motion === "spin" ? k * 3 : 0;
+  for (let i = 0; i < 8; i++) {
+    const an = (i / 8) * TAU + twist;
+    glyphAt(ctx, d.glyph, Math.cos(an) * R, Math.sin(an) * R, 12 * s * (1 - k * 0.4), an, a, b);
+  }
+}
+
+/** The move landing: its glyphs scatter, ring out, spiral, spray up or crack outward. */
+function drawOwnHit(ctx: CanvasRenderingContext2D, d: OwnDraw, a: string, b: string, s: number, k: number, e: number, fade: number, seed: number) {
+  ctx.globalAlpha = fade;
+  ctx.globalCompositeOperation = "lighter";
+  glow(ctx, 0, 0, 34 * s * (1 - k * 0.5), b, 0.7);
+  ctx.globalCompositeOperation = "source-over";
+  switch (d.burst) {
+    case "scatter":
+      for (let i = 0; i < 6; i++) {
+        const an = seed + (i / 6) * TAU + (noise(seed, i) - 0.5) * 0.6;
+        const dd = 10 + 46 * s * e;
+        glyphAt(ctx, d.glyph, Math.cos(an) * dd, Math.sin(an) * dd, 8 * s * (1 - k * 0.5), an + k * 5, a, b);
+      }
+      break;
+    case "ring": {
+      const R = 10 + 52 * s * e;
+      ctx.strokeStyle = b;
+      ctx.lineWidth = 5 * (1 - k) + 1;
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke();
+      for (let i = 0; i < 8; i++) { const an = seed + (i / 8) * TAU; glyphAt(ctx, d.glyph, Math.cos(an) * R, Math.sin(an) * R, 6 * s, an, a, b); }
+      break;
+    }
+    case "spiral":
+      for (let i = 0; i < 7; i++) {
+        const an = seed + i * 0.9 + e * 3;
+        const dd = (8 + i * 8) * s * e * 1.2;
+        glyphAt(ctx, d.glyph, Math.cos(an) * dd, Math.sin(an) * dd, 7 * s * (1 - i * 0.07), an, a, b);
+      }
+      break;
+    case "fountain":
+      for (let i = 0; i < 6; i++) {
+        const vx = (noise(seed, i) - 0.5) * 120 * s, vy = -(90 + noise(seed, i + 9) * 60) * s;
+        glyphAt(ctx, d.glyph, vx * k, vy * k + 220 * s * k * k, 8 * s, -Math.PI / 2 + vx * 0.01, a, b);
+      }
+      break;
+    case "crack":
+      ctx.strokeStyle = b;
+      ctx.lineWidth = 3 * (1 - k) + 1;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const an = seed + (i / 6) * TAU;
+        const L = 50 * s * e, kink = (noise(seed, i) - 0.5) * 0.8;
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(an + kink) * L * 0.5, Math.sin(an + kink) * L * 0.5);
+        ctx.lineTo(Math.cos(an) * L, Math.sin(an) * L);
+      }
+      ctx.stroke();
+      glyphAt(ctx, d.glyph, 0, 0, 14 * s * (1 - k * 0.3), seed, a, b);
+      break;
+  }
 }

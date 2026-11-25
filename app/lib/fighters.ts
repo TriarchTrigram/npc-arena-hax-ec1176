@@ -1,6 +1,9 @@
 // The 16 fighters, the 9 quest fighters, the 3 new-generation fighters and their power moves. Shared by the arena engine and the Fighters page.
 import { BOSSES, type BossId } from "./bosses";
-import { borrowLook, type PShape } from "./move-looks";
+import {
+  OWN_BURSTS, OWN_GLYPHS, OWN_MOTIONS, OWN_TRAILS, designLook,
+  type OwnBurst, type OwnGlyph, type OwnMotion, type OwnTrail, type PShape,
+} from "./move-looks";
 
 export type Power =
   | "pyro" | "cryo" | "electro" | "terra" | "aero" | "hydro" | "umbra" | "lux"
@@ -118,7 +121,7 @@ export type Shade = "main" | "glow" | "dark";
 /** The character sheet. `powers` are the game's powers you picked; `own` is a power you invented, always your main one. */
 export type CustomSpec = { name: string; powers: Power[]; gear: Gear; build: Build; shade: Shade; own?: OwnPower };
 
-/** A power you typed in and the AI made up. Its moves each play like one of the 16 fighters' moves, drawn in its own colours. */
+/** A power you typed in and the AI made up, with moves it designed itself (as many as it chose). */
 export type OwnPower = {
   id: string;
   name: string;
@@ -133,7 +136,7 @@ export type OwnPower = {
   spark: PShape;
   /** The effect its moves leave; null when it leaves none. */
   status: StatusEffect | null;
-  moves: { name: string; from: string }[];
+  moves: OwnMove[];
 };
 
 const M = (m: Omit<Move, "wind" | "act" | "rec"> & Partial<Pick<Move, "wind" | "act" | "rec">>): Move => ({
@@ -674,18 +677,97 @@ export function withTeamAttack(self: Power, partner: Power): FighterDef {
 }
 
 // ---------- A power you invented ----------
-// The AI names it, colours it and picks, for each of its moves, which of the 16 fighters' moves it plays like.
-// The move keeps that move's numbers (so it stays fair) and borrows its drawing in the invented power's colours.
+// The AI names it, colours it and designs every one of its moves from scratch: what kind of attack it is, how strong,
+// big and fast, the shape it throws, how that shape travels, the trail it leaves and how it bursts on a hit. The
+// numbers come from the move's kind and strength (so it stays fair) and the drawing from its design (designLook in
+// move-looks), so no invented move copies a fighter's move. The AI also decides how many moves a power has.
 
 export const OWN_SPARKS: PShape[] = ["dot", "spark", "shard", "chunk", "ring", "plus", "smoke", "ember", "flake", "drop", "leaf", "petal", "bubble", "bolt", "glyph", "pixel", "star", "dust"];
 export const STATUSES: StatusEffect[] = ["burn", "slow", "stun", "poison", "blind", "freeze"];
 export const ROLES: Role[] = ["attacker", "control", "tank", "support", "trickster"];
-export const MAX_OWN_MOVES = 6;
-/** The moves an invented power may play like: the 16 fighters' own, minus the copying one. */
-export const BORROWABLE: Move[] = FIGHTERS.flatMap((f) => f.moves.filter((m) => m.kind !== "mimic").map((m) => ({ ...m, power: f.id })));
-const BORROW_BY_ID = new Map(BORROWABLE.map((m) => [m.id, m]));
-const HSL = /^hsl\(\d{1,3}(\.\d+)? \d{1,3}(\.\d+)?% \d{1,3}(\.\d+)?%\)$/;
+export const MIN_OWN_MOVES = 3;
+export const MAX_OWN_MOVES = 8;
+export type OwnKind = Exclude<MoveKind, "mimic" | "warp" | "annihilate">;
+export const OWN_KINDS: OwnKind[] = ["melee", "projectile", "beam", "burst", "dash", "eruption", "rain", "blink", "heal", "zone", "pull"];
+export const ANIMS: Anim[] = ["jab", "kick", "cast", "thrust", "raise", "slam", "uppercut", "spin", "lunge"];
+export const OWN_STRENGTHS = ["light", "medium", "heavy"] as const;
+export const OWN_SIZES = ["small", "medium", "large"] as const;
+export const OWN_SPEEDS = ["slow", "normal", "fast"] as const;
+export { OWN_GLYPHS, OWN_TRAILS, OWN_MOTIONS, OWN_BURSTS };
+
+/** One invented move, as the AI designed it. */
+export type OwnMove = {
+  name: string;
+  kind: OwnKind;
+  anim: Anim;
+  strength: (typeof OWN_STRENGTHS)[number];
+  size: (typeof OWN_SIZES)[number];
+  speed: (typeof OWN_SPEEDS)[number];
+  /** How many shots, falling pieces or pillars (1 for the rest). */
+  count: number;
+  arc: boolean;
+  pierce: boolean;
+  /** Whether its hits leave the power's effect. */
+  effect: boolean;
+  /** Its own colour's hue; saturation and lightness follow the power's main colour. */
+  hue: number;
+  spark: PShape;
+  glyph: OwnGlyph;
+  trail: OwnTrail;
+  motion: OwnMotion;
+  burst: OwnBurst;
+};
+
+const HSL = /^hsl\((\d{1,3}(?:\.\d+)?) (\d{1,3}(?:\.\d+)?)% (\d{1,3}(?:\.\d+)?)%\)$/;
 const tidy = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
+const oneOf = <T extends string>(xs: readonly T[], v: unknown, fallback: T): T => (xs.includes(v as T) ? (v as T) : fallback);
+const hashOf = (s: string) => { let h = 7; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+const pickBy = <T,>(xs: readonly T[], seed: number) => xs[seed % xs.length];
+
+// Powers made before moves were designed saved, per move, the fighter move it played like. Those are rebuilt as
+// designed moves of the same kind, so every invented power plays its own moves.
+const OLD_MOVES = new Map(FIGHTERS.flatMap((f) => f.moves).map((m) => [m.id, m]));
+function fromOld(name: string, from: string, hue: number, spark: PShape): OwnMove | null {
+  const m = OLD_MOVES.get(from);
+  if (!m || !OWN_KINDS.includes(m.kind as OwnKind)) return null;
+  const h = hashOf(name);
+  return {
+    name, kind: m.kind as OwnKind, anim: m.anim,
+    strength: m.cd < 1.5 ? "light" : m.cd < 4.5 ? "medium" : "heavy",
+    size: "medium", speed: "normal", count: m.count ?? 1, arc: !!m.arc, pierce: !!m.pierce, effect: !!m.status,
+    hue, spark,
+    glyph: pickBy(OWN_GLYPHS, h), trail: pickBy(OWN_TRAILS, h >>> 4), motion: pickBy(OWN_MOTIONS, h >>> 8), burst: pickBy(OWN_BURSTS, h >>> 12),
+  };
+}
+
+function cleanMove(raw: unknown, hue: number, spark: PShape): OwnMove | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const name = tidy(r.name, 26);
+  if (!name) return null;
+  if (typeof r.from === "string") return fromOld(name, r.from, hue, spark);
+  if (!OWN_KINDS.includes(r.kind as OwnKind)) return null;
+  const h = Number(r.hue);
+  const count = Math.round(Number(r.count));
+  return {
+    name,
+    kind: r.kind as OwnKind,
+    anim: oneOf(ANIMS, r.anim, "cast"),
+    strength: oneOf(OWN_STRENGTHS, r.strength, "medium"),
+    size: oneOf(OWN_SIZES, r.size, "medium"),
+    speed: oneOf(OWN_SPEEDS, r.speed, "normal"),
+    count: Number.isFinite(count) ? Math.max(1, Math.min(7, count)) : 1,
+    arc: r.arc === true,
+    pierce: r.pierce === true,
+    effect: r.effect === true,
+    hue: Number.isFinite(h) ? ((Math.round(h) % 360) + 360) % 360 : hue,
+    spark: oneOf(OWN_SPARKS, r.spark, spark),
+    glyph: oneOf(OWN_GLYPHS, r.glyph, "orb"),
+    trail: oneOf(OWN_TRAILS, r.trail, "streak"),
+    motion: oneOf(OWN_MOTIONS, r.motion, "steady"),
+    burst: oneOf(OWN_BURSTS, r.burst, "scatter"),
+  };
+}
 
 /** A tidy copy of an invented power, or null when it is not one. */
 export function cleanOwn(raw: unknown): OwnPower | null {
@@ -695,11 +777,19 @@ export function cleanOwn(raw: unknown): OwnPower | null {
   const name = tidy(r.name, 24);
   const base = typeof r.base === "string" && isPower(r.base) && !QUEST_IDS.has(r.base) ? r.base : null;
   const color = tidy(r.color, 40), glow = tidy(r.glow, 40);
+  const main = HSL.exec(color);
+  if (!id || !name || !base || !main || !HSL.test(glow)) return null;
+  const spark = oneOf(OWN_SPARKS, r.spark, "spark");
+  const names = new Set<string>();
   const moves = (Array.isArray(r.moves) ? r.moves : [])
-    .map((m) => ({ name: tidy((m as Record<string, unknown>)?.name, 26), from: tidy((m as Record<string, unknown>)?.from, 40) }))
-    .filter((m) => m.name && BORROW_BY_ID.has(m.from))
+    .map((m) => cleanMove(m, Number(main[1]), spark))
+    .filter((m): m is OwnMove => !!m && !names.has(m.name.toLowerCase()) && !!names.add(m.name.toLowerCase()))
     .slice(0, MAX_OWN_MOVES);
-  if (!id || !name || !base || !HSL.test(color) || !HSL.test(glow) || moves.length === 0) return null;
+  if (moves.length === 0) return null;
+  // every fighter needs a close strike to fight up close, and one heal is plenty
+  if (!moves.some((m) => m.kind === "melee")) moves[0] = { ...moves[0], kind: "melee", anim: ["cast", "raise"].includes(moves[0].anim) ? "jab" : moves[0].anim };
+  let heals = 0;
+  for (let i = 0; i < moves.length; i++) if (moves[i].kind === "heal" && ++heals > 1) moves[i] = { ...moves[i], kind: "burst" };
   return {
     id,
     name,
@@ -709,21 +799,87 @@ export function cleanOwn(raw: unknown): OwnPower | null {
     role: ROLES.includes(r.role as Role) ? (r.role as Role) : DEF_BY_ID[base].role,
     color,
     glow,
-    spark: OWN_SPARKS.includes(r.spark as PShape) ? (r.spark as PShape) : "spark",
+    spark,
     status: STATUSES.includes(r.status as StatusEffect) ? (r.status as StatusEffect) : null,
     moves,
   };
 }
 
-/** The invented power's moves: each one plays like the move it borrows, under its new name, in its new colours. */
+const STATUS_DUR: Record<StatusEffect, number> = { burn: 2, slow: 1.5, stun: 0.3, poison: 3, blind: 1.2, freeze: 0.6 };
+const TIER = { light: 0, medium: 1, heavy: 2 } as const;
+const SIZE = { small: 0, medium: 1, large: 2 } as const;
+
+/** A designed move's numbers, from its kind and its strength, size and speed. */
+function ownStats(om: OwnMove): Omit<Move, "id" | "name" | "status" | "statusDur" | "power"> {
+  const t = TIER[om.strength];
+  const z = SIZE[om.size];
+  const by = <T,>(xs: readonly [T, T, T], i: number) => xs[i];
+  const anim = om.anim;
+  switch (om.kind) {
+    case "melee": {
+      const range = by([68, 84, 112], z);
+      return { kind: "melee", anim, range, minRange: range > 100 ? 40 : undefined, cd: by([0.9, 1.3, 2], t), dmg: by([7, 10, 13], t), kb: by([150, 240, 340], t), wind: by([0.13, 0.19, 0.25], t), act: 0.12, rec: 0.22 };
+    }
+    case "projectile": {
+      const n = Math.min(om.count, 5);
+      const ground = om.size === "large" && !om.arc && om.speed === "slow";
+      const per = n === 1 ? 1 : 1.7 / n;
+      return {
+        kind: "projectile", anim, range: 560, minRange: 80, cd: by([1.6, 2.4, 4], t),
+        dmg: Math.max(3, Math.round(by([8, 10, 13], t) * per * (om.pierce ? 0.85 : 1))),
+        speed: by([300, 520, 700], TIER[om.speed === "slow" ? "light" : om.speed === "fast" ? "heavy" : "medium"]),
+        size: by([9, 13, 20], z) + (ground ? 8 : 0), count: n > 1 ? n : undefined, spread: n > 1 ? 0.15 : undefined,
+        arc: om.arc || undefined, pierce: om.pierce || ground || undefined, ground: ground || undefined,
+        kb: by([100, 200, 320], t), wind: by([0.18, 0.24, 0.3], t), act: 0.12, rec: 0.22,
+      };
+    }
+    case "beam":
+      return { kind: "beam", anim, range: by([420, 520, 620], z), minRange: 60, cd: by([2.4, 3.2, 5], t), dmg: by([10, 13, 16], t), act: by([0.3, 0.4, 0.5], t), kb: by([0, 150, 450], t) || undefined, wind: by([0.25, 0.3, 0.4], t), rec: 0.22 };
+    case "burst": {
+      const radius = by([120, 145, 175], z);
+      return { kind: "burst", anim, range: Math.round(radius * 0.85), cd: by([4.5, 5.5, 7], t), dmg: by([8, 11, 14], t), radius, kb: by([260, 340, 420], t), lift: by([-200, -280, -360], t), wind: 0.3, act: 0.12, rec: 0.35 };
+    }
+    case "dash": {
+      const dist = by([240, 280, 320], z);
+      return { kind: "dash", anim, range: dist, cd: by([3.5, 4, 5], t), dmg: by([8, 10, 12], t), dist, act: by([0.3, 0.35, 0.45], t), kb: by([180, 260, 360], t), lift: by([-150, -250, -350], t), wind: 0.18, rec: 0.22 };
+    }
+    case "eruption": {
+      const n = Math.min(om.count, 4);
+      return { kind: "eruption", anim, range: 440, minRange: 50, cd: by([3.5, 4.5, 5.5], t) + (n > 1 ? 1 : 0), dmg: Math.round(by([12, 14, 16], t) * (n > 1 ? 0.7 : 1)), radius: by([40, 46, 54], z), count: n > 1 ? n : undefined, lift: by([-600, -700, -800], t), wind: 0.35, act: 0.12, rec: 0.22 };
+    }
+    case "rain": {
+      const n = Math.max(3, Math.min(om.count, 7));
+      return { kind: "rain", anim, range: 480, cd: by([4, 5, 6.5], t), dmg: Math.max(4, Math.round(by([20, 26, 34], t) / n)), count: n, radius: by([90, 120, 140], z), size: by([9, 12, 16], z), wind: 0.35, act: 0.12, rec: 0.3 };
+    }
+    case "blink":
+      return { kind: "blink", anim, range: 600, minRange: 80, cd: by([2.5, 3.2, 4], t), dmg: by([10, 12, 14], t), kb: by([220, 280, 340], t), wind: 0.2, act: 0.12, rec: 0.22 };
+    case "heal":
+      return { kind: "heal", anim, range: 2000, cd: by([7, 8, 9], t), dmg: 0, heal: by([14, 18, 22], t), below: 0.65, wind: 0.3, act: 0.3, rec: 0.22 };
+    case "zone":
+      return { kind: "zone", anim, range: om.size === "small" ? 160 : 420, cd: by([6, 6.5, 7], t), dmg: by([3, 4, 5], t), radius: by([95, 110, 125], z), dur: by([3, 3.5, 4], t), pullIn: om.motion === "spin" ? 260 : undefined, wind: 0.3, act: 0.12, rec: 0.22 };
+    case "pull":
+      return { kind: "pull", anim, range: 400, minRange: 100, cd: by([3, 3.5, 4], t), dmg: by([6, 8, 10], t), wind: 0.18, act: 0.12, rec: 0.22 };
+  }
+}
+
+/** The colours a designed move is drawn in: its own hue, in the power's main colour's saturation and lightness. */
+function ownColours(own: OwnPower, hue: number) {
+  const [, , s, l] = HSL.exec(own.color) ?? [];
+  const [, , , gl] = HSL.exec(own.glow) ?? [];
+  return { a: `hsl(${hue} ${s ?? 80}% ${l ?? 50}%)`, b: `hsl(${hue} 100% ${gl ?? 80}%)` };
+}
+
+/** The invented power's moves: each built from its own design, under its own name, in its own colours. */
 function ownMoves(own: OwnPower): Move[] {
   return own.moves.map((om, i) => {
-    const from = BORROW_BY_ID.get(om.from)!;
     const id = `own-${own.id}-${i}`;
-    borrowLook(id, from.id, own.color, own.glow, own.spark);
-    // its own effect replaces the borrowed one; a lingering field never stuns, or the stun would never wear off
-    const status = own.status && from.status ? (from.kind === "zone" && own.status === "stun" ? "slow" : own.status) : undefined;
-    return { ...from, id, name: om.name, power: own.base, status, statusDur: status ? from.statusDur : undefined };
+    const { a, b } = ownColours(own, om.hue);
+    designLook(id, a, b, om.spark, { kind: om.kind, glyph: om.glyph, trail: om.trail, motion: om.motion, burst: om.burst });
+    const stats = ownStats(om);
+    // its own effect, on the moves designed to carry it; a lingering field never stuns, or the stun would never wear off
+    const st = om.effect && own.status && om.kind !== "heal" ? (om.kind === "zone" && own.status === "stun" ? "slow" : own.status) : undefined;
+    const statusDur = st ? (om.kind === "zone" ? Math.min(0.6, STATUS_DUR[st]) : STATUS_DUR[st] * (om.strength === "heavy" ? 1.3 : 1)) : undefined;
+    return { ...stats, id, name: om.name, power: own.base, status: st, statusDur };
   });
 }
 
@@ -752,14 +908,15 @@ function signatureMoves(a: Power, b: Power, own?: OwnPower): Move[] {
     M({ id: `sig-nova-${a}-${b}`, name: one ? `${wa.word} Nova` : `${wb.word} ${wa.word} Nova`, kind: "burst", anim: "slam", power: a, range: 150, cd: 6.5, dmg: 15, radius: 165, kb: 400, lift: -320, heal: wa.heal ?? wb.heal, wind: 0.3, rec: 0.35, ...stA }),
   ];
   if (!own) return moves;
-  // an invented power names both and draws them in its colours, borrowing a shot and a blast of the element it leans on
+  // an invented power names both and draws them from its own designs: the comet like its first shot, the nova like its first blast
   const word = own.word;
   const [comet, nova] = moves;
   const cometId = `own-${own.id}-comet-${b}`, novaId = `own-${own.id}-nova-${b}`;
-  const shot = DEF_BY_ID[own.base].moves.find((m) => m.kind === "projectile") ?? DEF_BY_ID.pyro.moves[1];
-  const blast = DEF_BY_ID[own.base].moves.find((m) => m.kind === "burst") ?? DEF_BY_ID.pyro.moves[3];
-  borrowLook(cometId, shot.id, own.color, own.glow, own.spark);
-  borrowLook(novaId, blast.id, own.color, own.glow, own.spark);
+  const shot = own.moves.find((m) => m.kind === "projectile" || m.kind === "rain") ?? own.moves[0];
+  const blast = own.moves.find((m) => m.kind === "burst" || m.kind === "eruption" || m.kind === "zone") ?? own.moves[own.moves.length - 1];
+  const design = (m: OwnMove, kind: string) => ({ kind, glyph: m.glyph, trail: m.trail, motion: m.motion, burst: m.burst });
+  designLook(cometId, own.color, own.glow, shot.spark, design(shot, "projectile"));
+  designLook(novaId, own.color, own.glow, blast.spark, design(blast, "burst"));
   const ownSt = own.status ? { status: own.status, statusDur: own.status === "stun" ? 0.25 : 1.5 } : {};
   return [
     { ...comet, id: cometId, name: one ? `${word} Comet` : `${word} ${wb.word} Comet`, power: one ? a : b, ...(one ? ownSt : {}) },
@@ -801,7 +958,8 @@ export function customOf(spec: CustomSpec, fallbackName = "You"): FighterDef {
   const count = els.length;
   const per = count === 1 ? 6 : count === 2 ? 3 : 2;
   const picked = spec.powers.flatMap((p) => DEF_BY_ID[p].moves.slice(0, per).map((m) => (!own && p === a ? m : { ...m, power: p })));
-  const moves = own ? [...ownMoves(own).slice(0, per), ...picked] : picked;
+  // an invented power keeps every move the AI gave it
+  const moves = own ? [...ownMoves(own), ...picked] : picked;
   const speed = Math.round(els.reduce((s, p) => s + DEF_BY_ID[p].speed, 0) / count) + BUILD_SPEED[spec.build];
   const names = [...(own ? [own.name] : []), ...spec.powers.map((p) => DEF_BY_ID[p].power)];
   const color = own ? own.color : A.color;
