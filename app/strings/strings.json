@@ -185,7 +185,8 @@
       "teams": "Pick sides and fight together.",
       "tournament": "A bracket, round by round.",
       "teamTournament": "Teams fight through a bracket together.",
-      "juggernaut": "Five challengers against one boss."
+      "juggernaut": "Five challengers against one boss.",
+      "free": "Hang out in six places and start a fight anywhere."
     }
   },
   "nav": {},
@@ -512,6 +513,147 @@
       "joined": "{{name}} has joined your roster.",
       "close": "Done",
       "skip": "Skip"
+    }
+  },
+  "free": {
+    "modeName": "Free World",
+    "eyebrow": "Free World",
+    "youTag": "YOU",
+    "canvasAria": "The Free World: your party walking around, or a fight in progress",
+    "travel": "Places",
+    "status": {
+      "explore": "Exploring",
+      "fight": "Fighting"
+    },
+    "places": {
+      "house": {
+        "name": "House",
+        "blurb": "Your place. Put your feet up, watch some TV, raid the fridge."
+      },
+      "city": {
+        "name": "City",
+        "blurb": "Busy streets full of fighters going about their day."
+      },
+      "dojo": {
+        "name": "Dojo",
+        "blurb": "Quiet mats, a worn training dummy and a corner to meditate in."
+      },
+      "arcade": {
+        "name": "Arcade",
+        "blurb": "Neon, cabinets and a claw machine that might actually pay out."
+      },
+      "park": {
+        "name": "Park",
+        "blurb": "Grass, a lake with ducks, and a bench in the shade."
+      },
+      "rooftop": {
+        "name": "Rooftop",
+        "blurb": "Up above the city at dusk, with the stars coming out."
+      }
+    },
+    "spots": {
+      "couch": {
+        "label": "Relax on the couch",
+        "done": "{{name}} kicks back on the couch."
+      },
+      "tv": {
+        "label": "Watch TV",
+        "done": "{{name}} puts a show on."
+      },
+      "kitchen": {
+        "label": "Grab a snack",
+        "done": "{{name}} raids the fridge."
+      },
+      "foodcart": {
+        "label": "Get a bite at the food cart",
+        "done": "{{name}} grabs something from the food cart."
+      },
+      "fountain": {
+        "label": "Toss a coin in the fountain",
+        "done": "{{name}} tosses a coin and makes a wish."
+      },
+      "dummy": {
+        "label": "Train on the dummy",
+        "done": "{{name}} lands a combo on the training dummy."
+      },
+      "mat": {
+        "label": "Meditate",
+        "done": "{{name}} sits still and breathes."
+      },
+      "cabinet": {
+        "label": "Play a game",
+        "done": "{{name}} scores {{score}} points."
+      },
+      "claw": {
+        "label": "Try the claw machine",
+        "done": "{{name}} wins a prize from the claw machine."
+      },
+      "bench": {
+        "label": "Sit on the bench",
+        "done": "{{name}} takes a breather on the bench."
+      },
+      "lake": {
+        "label": "Skip a stone",
+        "done": "{{name}} skips a stone across the lake."
+      },
+      "ledge": {
+        "label": "Look out over the city",
+        "done": "{{name}} takes in the city lights."
+      },
+      "stargaze": {
+        "label": "Stargaze",
+        "done": "{{name}} spots a shooting star."
+      }
+    },
+    "controls": {
+      "left": "Walk left",
+      "right": "Walk right",
+      "hint": "Walk with the arrow keys or A and D. Press E at a star to do something there."
+    },
+    "fight": {
+      "open": "Start a fight",
+      "title": "Start a fight here",
+      "intro": "Your party fights on one side, right where you're standing. Pick up to 6 opponents for the other side. There's no timer: it goes until one side is down.",
+      "count": "{{count}} of {{max}} opponents",
+      "surprise": "Surprise me",
+      "clear": "Clear",
+      "go": "Fight",
+      "need": "Pick at least one opponent.",
+      "hint": "Your party fights on its own, like everywhere else in the arena.",
+      "leave": "Leave fight",
+      "won": "Your side wins!",
+      "lost": "Your side was knocked out.",
+      "draw": "Nobody is left standing.",
+      "again": "Fight again",
+      "back": "Keep exploring"
+    },
+    "party": {
+      "title": "Your party",
+      "change": "Change",
+      "you": "You",
+      "intro": "Pick who you are, and up to 3 companions who walk with you and fight on your side.",
+      "youTitle": "You",
+      "matesTitle": "Walking with you",
+      "count": "{{count}} of {{max}}",
+      "empty": "Nobody is walking with you yet. Add up to 3 companions.",
+      "bossNote": "Bosses you beat in Story and rehabilitate can join your party too.",
+      "done": "Done"
+    },
+    "groups": {
+      "originals": "Fighters",
+      "quest": "Quest fighters",
+      "newgen": "New generation",
+      "bosses": "Rehabilitated bosses",
+      "hybrids": "Hybrids",
+      "beaten": "Bosses you've beaten"
+    },
+    "bosses": {
+      "title": "Bosses you've beaten",
+      "empty": "Beat a chapter boss in Story to meet it here.",
+      "hint": "Rehabilitate a beaten boss and it can walk with you and fight on your side.",
+      "rehab": "Rehabilitate",
+      "rehabbed": "Rehabilitated",
+      "done": "{{name}} has turned over a new leaf and can join your party."
     }
   }
 }

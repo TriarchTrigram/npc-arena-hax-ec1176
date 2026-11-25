@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { IconType } from "react-icons";
-import { PiBookOpenTextBold, PiCrownSimpleBold, PiShieldChevronBold, PiSwordBold, PiTreeStructureBold, PiTrophyBold, PiUsersThreeBold } from "react-icons/pi";
+import { PiBookOpenTextBold, PiCrownSimpleBold, PiMapTrifoldBold, PiShieldChevronBold, PiSwordBold, PiTreeStructureBold, PiTrophyBold, PiUsersThreeBold } from "react-icons/pi";
 import { Text } from "~stencil/ui/strings";
 import type { StringKey } from "~stencil/types/strings";
 import { cn } from "~/lib/utils";
@@ -8,9 +8,11 @@ import { DEF_BY_ID, FIGHTERS, type FighterDef } from "~/lib/fighters";
 import { BOSSES } from "~/lib/bosses";
 import { W, H, newDemo, newGame, step, drawScene, buildBackdrop, type Game } from "~/lib/arena-engine";
 
-type Mode = "story" | "duel" | "ffa" | "teams" | "tournament" | "teamTournament" | "juggernaut";
+/** The arena's modes, plus Free World, which opens its own screen. */
+export type TitleMode = "story" | "duel" | "ffa" | "teams" | "tournament" | "teamTournament" | "juggernaut" | "free";
+type Mode = TitleMode;
 
-const MODE_ORDER: Mode[] = ["story", "duel", "ffa", "teams", "tournament", "teamTournament", "juggernaut"];
+const MODE_ORDER: Mode[] = ["story", "duel", "ffa", "teams", "tournament", "teamTournament", "juggernaut", "free"];
 const MODE_NAME_KEYS: Record<Mode, StringKey> = {
   story: "arena.mode.story",
   duel: "arena.mode.duel",
@@ -19,6 +21,7 @@ const MODE_NAME_KEYS: Record<Mode, StringKey> = {
   tournament: "arena.mode.tournament",
   teamTournament: "arena.mode.teamTournament",
   juggernaut: "arena.mode.juggernaut",
+  free: "free.modeName",
 };
 const MODE_DESC_KEYS: Record<Mode, StringKey> = {
   story: "title.modes.story",
@@ -28,6 +31,7 @@ const MODE_DESC_KEYS: Record<Mode, StringKey> = {
   tournament: "title.modes.tournament",
   teamTournament: "title.modes.teamTournament",
   juggernaut: "title.modes.juggernaut",
+  free: "title.modes.free",
 };
 const MODE_ICONS: Record<Mode, IconType> = {
   story: PiBookOpenTextBold,
@@ -37,6 +41,7 @@ const MODE_ICONS: Record<Mode, IconType> = {
   tournament: PiTreeStructureBold,
   teamTournament: PiTrophyBold,
   juggernaut: PiCrownSimpleBold,
+  free: PiMapTrifoldBold,
 };
 /** Each mode card's accent, taken from a fighter whose power suits it. */
 const MODE_TINT: Record<Mode, FighterDef["id"]> = {
@@ -47,6 +52,7 @@ const MODE_TINT: Record<Mode, FighterDef["id"]> = {
   tournament: "lux",
   teamTournament: "terra",
   juggernaut: "umbra",
+  free: "flora",
 };
 
 /** Who fights behind the title next: Pyro against Hydro first, then random match-ups, now and then a Story boss. */

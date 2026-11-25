@@ -1994,17 +1994,7 @@ function tickFighter(g: Game, f: Fighter, dt: number) {
   } else if (!f.onGround) {
     target_ = AIR;
   } else if (f.walkDir) {
-    const p = f.walk;
-    const back = f.walkDir !== f.facing ? -1 : 1;
-    const lF1 = 0.08 + 0.55 * Math.sin(p) * back;
-    const lB1 = 0.08 - 0.55 * Math.sin(p) * back;
-    target_ = {
-      ...stanceOf(f.def),
-      t: stanceOf(f.def).t + 0.08 + Math.abs(Math.sin(p)) * 0.04,
-      lF1, lF2: lF1 - (0.15 + 0.5 * Math.max(0, Math.cos(p) * back)),
-      lB1, lB2: lB1 - (0.15 + 0.5 * Math.max(0, -Math.cos(p) * back)),
-      aB1: 0.35 - 0.4 * Math.sin(p) * back,
-    };
+    target_ = walkPose(f);
     k = 26;
   } else {
     target_ = idlePose(f, g.t);
@@ -2046,6 +2036,21 @@ function physics(f: Fighter, dt: number) {
   f.vx *= Math.pow(f.onGround ? 0.004 : f.jugg && f.alive ? 0.03 : 0.4, dt);
   if (f.x < 24) { f.x = 24; f.vx = Math.abs(f.vx) * 0.4; }
   if (f.x > W - 24) { f.x = W - 24; f.vx = -Math.abs(f.vx) * 0.4; }
+}
+
+/** The walk cycle on the ground, leaning into the step. */
+function walkPose(f: Fighter): Pose {
+  const p = f.walk;
+  const back = f.walkDir !== f.facing ? -1 : 1;
+  const lF1 = 0.08 + 0.55 * Math.sin(p) * back;
+  const lB1 = 0.08 - 0.55 * Math.sin(p) * back;
+  return {
+    ...stanceOf(f.def),
+    t: stanceOf(f.def).t + 0.08 + Math.abs(Math.sin(p)) * 0.04,
+    lF1, lF2: lF1 - (0.15 + 0.5 * Math.max(0, Math.cos(p) * back)),
+    lB1, lB2: lB1 - (0.15 + 0.5 * Math.max(0, -Math.cos(p) * back)),
+    aB1: 0.35 - 0.4 * Math.sin(p) * back,
+  };
 }
 
 function smoothPose(f: Fighter, target: Pose, dt: number, k: number) {
@@ -4481,4 +4486,21 @@ function drawCutTitles(ctx: CanvasRenderingContext2D, f: Fighter, k: number) {
     outlinedText(ctx, rg.title, x, H * 0.3 + 104, 26 + 6 * (1 - e3), f.def.id === "electro" || rg.kind === "mastery" ? "white" : rg.b, align);
   }
   ctx.globalAlpha = 1;
+}
+
+// ---------- Free World: strolling outside a fight ----------
+/** Free World: one fighter walking (dir -1 or 1, having covered `dist` pixels) or resting (dir 0), with the arena's own walk cycle and idle breathing. */
+export function strollPose(g: Game, f: Fighter, dir: number, dist: number, dt: number) {
+  f.walkDir = dir;
+  if (dir) {
+    f.facing = dir > 0 ? 1 : -1;
+    f.walk += Math.abs(dist) / 14;
+  }
+  f.flash = Math.max(0, f.flash - dt);
+  smoothPose(f, dir ? walkPose(f) : idlePose(f, g.t), dt, dir ? 26 : 10);
+}
+
+/** Free World: draw one fighter where it stands, with its shadow, and no lifebar or HUD. */
+export function drawStroller(ctx: CanvasRenderingContext2D, g: Game, f: Fighter) {
+  drawFighter(ctx, g, f);
 }

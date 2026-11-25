@@ -29,7 +29,8 @@ import { arenaMusic } from "~/lib/arena-music";
 import { MusicControl } from "~/components/music-control";
 import { drawBracket, recordWinner, nextMatch, champion, progress, started, entrants, type Bracket, type Format, type MatchRef } from "~/lib/bracket";
 import { BracketView, type TeamEntry } from "~/components/bracket-view";
-import { TitleScreen } from "~/components/title-screen";
+import { TitleScreen, type TitleMode } from "~/components/title-screen";
+import { FreeWorld } from "~/components/free-world";
 import { StoryPanel } from "~/components/story-panel";
 import { CHAPTERS, STAGES_PER_CHAPTER, bossesBeaten, canTeam, chapterOpen, fusionOrder, loadProgress, saveProgress, stageLineup, type Pair } from "~/lib/story";
 
@@ -96,7 +97,7 @@ function shuffled<T>(xs: T[]): T[] {
 }
 
 export default function Home() {
-  const [screen, setScreen] = useState<"title" | "arena">("title");
+  const [screen, setScreen] = useState<"title" | "arena" | "free">("title");
   const [mode, setMode] = useState<Mode>("ffa");
   const [picked, setPicked] = useState<RosterId[]>(ALL);
   const hybrids = useHybrids();
@@ -192,8 +193,9 @@ export default function Home() {
     arenaMusic.set({ muted: !musicMuted });
   };
   // The title theme on the title screen, the battle theme in the arena; leaving the page stops it.
+  // Free World picks its own theme: calm while exploring, the battle theme in a fight.
   useEffect(() => {
-    arenaMusic.play(screen === "title" ? "title" : "battle");
+    if (screen !== "free") arenaMusic.play(screen === "title" ? "title" : "battle");
   }, [screen]);
   useEffect(() => () => arenaMusic.play(null), []);
   const musicControl = <MusicControl volume={musicVolume} muted={musicMuted} onVolume={changeMusicVolume} onToggle={toggleMusic} />;
@@ -472,7 +474,11 @@ export default function Home() {
     }
   };
 
-  const enterFromTitle = (m: Mode) => {
+  const enterFromTitle = (m: TitleMode) => {
+    if (m === "free") {
+      setScreen("free");
+      return;
+    }
     switchMode(m);
     setScreen("arena");
   };
@@ -519,7 +525,7 @@ export default function Home() {
   return (
     <PageContainer>
       <nav className="mb-6 flex items-center gap-2">
-        {screen === "arena" && !fighting && !tourLive ? (
+        {(screen === "arena" && !fighting && !tourLive) || screen === "free" ? (
           <button
             type="button"
             onClick={() => setScreen("title")}
@@ -538,6 +544,8 @@ export default function Home() {
 
       {screen === "title" ? (
         <TitleScreen onPick={enterFromTitle} music={musicControl} />
+      ) : screen === "free" ? (
+        <FreeWorld music={musicControl} />
       ) : (
         <>
           <PageHeader
