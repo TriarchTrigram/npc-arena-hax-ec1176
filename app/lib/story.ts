@@ -121,6 +121,21 @@ export const CHAPTERS: Chapter[] = [
       { enemies: [], boss: "blacksun" },
     ],
   },
+  {
+    // Chapter 8: The Edge of Everything
+    stages: [
+      { enemies: ["gravi"] },
+      { enemies: ["tele", "psy"], enemyHp: 0.85 },
+      { enemies: ["gravi", "chrono"], enemyHp: 0.7 },
+      { enemies: ["lux", "umbra"], enemyHp: 0.8 },
+      { enemies: ["psy", "tele", "shift"], enemyHp: 0.45 },
+      { enemies: ["gravi", "magneto", "terra"], enemyHp: 0.44 },
+      { enemies: ["chrono", "cryo", "lux"], enemyHp: 0.44 },
+      { enemies: ["gravi", "psy", "tele", "umbra"], enemyHp: 0.2 },
+      { enemies: ["pyro", "lux", "gravi", "chrono", "psy"], enemyHp: 0.13 },
+      { enemies: [], boss: "axiom" },
+    ],
+  },
 ];
 
 export const STAGES_PER_CHAPTER = 10;
@@ -193,5 +208,5 @@ export const bossesBeaten = (cleared: number[]): BossId[] =>
     return boss && (cleared[i] ?? 0) >= STAGES_PER_CHAPTER ? [boss] : [];
   });
 
-/** The chapter (1 to 7) each boss closes. */
+/** The chapter (1 to 8) each boss closes. */
 export const bossChapter = (id: BossId): number => CHAPTERS.findIndex((ch) => ch.stages.some((s) => s.boss === id)) + 1;

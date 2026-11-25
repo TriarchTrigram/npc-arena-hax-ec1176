@@ -249,6 +249,19 @@ const CAST: Record<Power, Voice> = {
     s.noise(7000, 4500, 0.025, 0.45, { type: "highpass", delay: 0.22 * len });
     s.fm((v === 1 ? 587 : v === 2 ? 659 : 523) * p, 3, 1.5, 0.4 * len, 0.12, 0.24 * len);
   },
+  // Facet: crystal growing with a rising glassy shimmer, then a bright struck chime
+  crys: (s, p, len, v) => {
+    s.tone(900 * p, 2200 * p, 0.25 * len, 0.08, { type: "triangle", vib: [22, 30] });
+    const bell = v === 0 ? [1320, 1980] : v === 1 ? [1175, 1760] : [1480, 2220];
+    bell.forEach((n, i) => s.fm(n * p, 3.5, 2, 0.5 * len, 0.13, 0.18 * len + i * 0.05));
+    s.noise(9000, 6000, 0.05, 0.25, { type: "highpass", delay: 0.18 * len });
+  },
+  // Sirocco: a hiss of moving sand that swells and falls away, with a low dry wind under it
+  sand: (s, p, len, v) => {
+    s.noise(1400 * p, 5200 * p, 0.18 * len, 0.4, { type: "bandpass", q: 1.2, attack: 0.08 * len });
+    s.noise(5200 * p, 900 * p, 0.32 * len, 0.35, { type: "bandpass", q: 1.5, delay: 0.14 * len });
+    s.noise(320 * p, 180 * p, 0.4 * len, 0.25, { type: "lowpass", q: 3 + v, attack: 0.12 * len });
+  },
 };
 
 const IMPACT: Record<Power, Voice> = {
@@ -312,6 +325,18 @@ const IMPACT: Record<Power, Voice> = {
     s.noise(8000 * p, 5000, 0.04, 0.55, { type: "highpass", q: 2 });
     s.noise(3000, 2200, 0.08, 0.25, { type: "bandpass", q: 2, delay: 0.04 });
     s.tone(260 * p, 120, 0.06, 0.2, { type: "triangle" });
+  },
+  // crystal cracking: a hard glassy clink and a ringing chip
+  crys: (s, p) => {
+    s.noise(7500, 3500, 0.06, 0.5, { type: "highpass", q: 3 });
+    s.fm(2100 * p, 2.4, 3, 0.22, 0.14);
+    s.tone(140 * p, 60, 0.12, 0.35, { type: "sine" });
+  },
+  // a thump into sand and a spray of grains
+  sand: (s, p) => {
+    s.tone(110 * p, 45, 0.14, 0.5, { type: "sine" });
+    s.noise(2600 * p, 700, 0.2, 0.5, { type: "bandpass", q: 1 });
+    s.noise(6000, 4000, 0.12, 0.2, { type: "highpass", delay: 0.05 });
   },
 };
 

@@ -8,6 +8,8 @@
 // Liminal: a great ring door behind its shoulders, a small door at each hand, orbiting bits of matter and a keyhole for a face.
 // Overtone: headphones, an equalizer for a face, a speaker cone thumping in his chest and rings of sound pulsing off him on the beat.
 // Vellum: a paper body with fold creases, a red ink seal on the brow, a long scroll trailing from the shoulders and origami cranes circling.
+// Facet: a cut gem for a head with a crown of crystals, a ridge of crystals down the back, a diamond in the chest splitting light, crystal fists.
+// Sirocco: a wrapped hood and face band with glowing eyes, a scarf that frays into sand, sand pouring from one hand and rings of sand round the legs.
 import type { Power } from "./fighters";
 import { drawCrane } from "./move-looks";
 import type { BossRig } from "./boss-designs";
@@ -656,6 +658,252 @@ function vellumFront(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face:
   ctx.restore();
 }
 
+// ---------- Facet ----------
+
+/** One crystal: a six-sided prism with a pointed tip, growing from (x, y) along `ang`. */
+function crystal(ctx: CanvasRenderingContext2D, x: number, y: number, ang: number, len: number, w: number, fill: string, edge: string, s: number) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(ang);
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = edge;
+  ctx.lineWidth = 1.2 * s;
+  ctx.beginPath();
+  ctx.moveTo(0, -w);
+  ctx.lineTo(len - w * 1.4, -w);
+  ctx.lineTo(len, 0);
+  ctx.lineTo(len - w * 1.4, w);
+  ctx.lineTo(0, w);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = "hsl(0 0% 100% / 0.6)";
+  ctx.beginPath();
+  ctx.moveTo(w * 0.4, -w * 0.3);
+  ctx.lineTo(len - w * 1.6, -w * 0.3);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function facetBack(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: number, t: number, alive: boolean, act: QuestAct | undefined, p: QuestPaint) {
+  ctx.save();
+  ctx.lineJoin = "round";
+  const back = -face;
+  const fill = p.nightmare ? "hsl(280 20% 10% / 0.95)" : "hsl(286 40% 62% / 0.92)";
+  const grow = act && act.phase === "strike" ? 1.25 : 1;
+  // a ridge of crystals out of the back and shoulders, leaning away from where it faces
+  const spine = [r.neck, { x: (r.neck.x + r.hip.x) / 2, y: (r.neck.y + r.hip.y) / 2 }, r.shoulder];
+  const spikes: [number, number, number, number][] = [[0, -1.9, 30, 6], [1, -2.4, 24, 5], [2, -1.5, 22, 5], [0, -2.6, 18, 4]];
+  for (const [i, a, len, w] of spikes) {
+    const base = spine[i];
+    const ang = back > 0 ? a + Math.PI * 0.5 : Math.PI - (a + Math.PI * 0.5);
+    crystal(ctx, base.x + back * 3 * s, base.y, ang, len * s * grow, w * s, fill, alive ? p.glow : al(p.glow, 0.4), s);
+  }
+  if (alive) {
+    ctx.globalCompositeOperation = "lighter";
+    glowDot(ctx, r.neck.x + back * 14 * s, r.neck.y - 6 * s, 26 * s, p.glow, 0.25 + 0.1 * Math.sin(t * 3));
+    // a few chips of crystal drifting up off it
+    for (let i = 0; i < 4; i++) {
+      const k = (t * 0.5 + i / 4) % 1;
+      const cx = r.neck.x + back * (6 + i * 5) * s + Math.sin(t * 2 + i) * 4 * s, cy = r.hip.y - k * 60 * s;
+      ctx.fillStyle = al(i % 2 ? p.glow : p.b, 0.8 * (1 - k));
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 3 * s); ctx.lineTo(cx + 2 * s, cy); ctx.lineTo(cx, cy + 3 * s); ctx.lineTo(cx - 2 * s, cy);
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }
+  ctx.restore();
+}
+
+function facetFront(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: number, t: number, alive: boolean, p: QuestPaint) {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const h = r.head;
+  const edge = alive ? p.glow : al(p.glow, 0.4);
+  const fill = p.nightmare ? "hsl(280 20% 9%)" : "hsl(286 42% 68%)";
+  // a faceted gem for a head: an eight-sided stone with its facets cut in
+  const R = (HEAD + 1.5) * s;
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = edge;
+  ctx.lineWidth = 1.5 * s;
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU + Math.PI / 8;
+    const x = h.x + Math.cos(a) * R, y = h.y + Math.sin(a) * R;
+    if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = al(p.nightmare ? p.glow : "hsl(0 0% 100%)", 0.5);
+  ctx.lineWidth = 1 * s;
+  ctx.beginPath();
+  ctx.moveTo(h.x - R * 0.5, h.y - R * 0.55); ctx.lineTo(h.x + R * 0.5, h.y - R * 0.55);
+  ctx.lineTo(h.x, h.y + R * 0.9); ctx.closePath();
+  ctx.stroke();
+  // a crown of three small crystals on top
+  for (const [dx, a, len] of [[-5, -1.95, 11], [0, -Math.PI / 2, 15], [5, -1.2, 11]] as const) {
+    crystal(ctx, h.x + dx * s, h.y - R * 0.8, a, len * s, 2.6 * s, fill, edge, s);
+  }
+  // the eye: one bright point of light refracting out
+  if (alive) {
+    const ex = h.x + face * 4.5 * s, ey = h.y - 1 * s;
+    ctx.globalCompositeOperation = "lighter";
+    glowDot(ctx, ex, ey, 7 * s, p.glow, 0.9);
+    ctx.strokeStyle = al(p.b, 0.8);
+    ctx.lineWidth = 1 * s;
+    ctx.beginPath();
+    ctx.moveTo(ex - 5 * s, ey); ctx.lineTo(ex + 5 * s, ey);
+    ctx.moveTo(ex, ey - 5 * s); ctx.lineTo(ex, ey + 5 * s);
+    ctx.stroke();
+    ctx.globalCompositeOperation = "source-over";
+  }
+  // a cut diamond set in the chest, splitting light into a little rainbow
+  const cx = r.neck.x + (r.hip.x - r.neck.x) * 0.32, cy = r.neck.y + (r.hip.y - r.neck.y) * 0.32;
+  ctx.fillStyle = p.nightmare ? "hsl(350 90% 30%)" : "hsl(172 80% 82%)";
+  ctx.strokeStyle = edge;
+  ctx.lineWidth = 1.3 * s;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 7 * s); ctx.lineTo(cx + 6 * s, cy - 2 * s); ctx.lineTo(cx, cy + 8 * s); ctx.lineTo(cx - 6 * s, cy - 2 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  if (alive) {
+    ctx.globalCompositeOperation = "lighter";
+    const hues = p.nightmare ? [350, 10, 330] : [0, 50, 120, 190, 270];
+    hues.forEach((hue, i) => {
+      const a = -0.5 + i * 0.25 + Math.sin(t * 1.5) * 0.1;
+      ctx.strokeStyle = `hsl(${hue} 100% 70% / ${0.35 + 0.15 * Math.sin(t * 4 + i)})`;
+      ctx.lineWidth = 1.6 * s;
+      ctx.beginPath();
+      ctx.moveTo(cx + face * 3 * s, cy);
+      ctx.lineTo(cx + face * Math.cos(a) * 22 * s, cy + Math.sin(a) * 22 * s);
+      ctx.stroke();
+    });
+    ctx.globalCompositeOperation = "source-over";
+  }
+  // crystal gauntlets: a cluster of points on each fist
+  for (const hand of [r.hF, r.hB]) {
+    for (const a of [-2.2, -1.57, -0.9]) crystal(ctx, hand.x, hand.y, a + (face > 0 ? 0.3 : -0.3), 9 * s, 2.2 * s, fill, edge, s);
+  }
+  ctx.restore();
+}
+
+// ---------- Sirocco ----------
+
+/** The ring of sand that circles its legs: the far half behind the body, the near half in front. */
+function siroccoSwirl(ctx: CanvasRenderingContext2D, r: BossRig, s: number, t: number, alive: boolean, p: QuestPaint, near: boolean) {
+  if (!alive) return;
+  const cx = r.hip.x, base = Math.max(r.fF.y, r.fB.y);
+  for (let ring = 0; ring < 3; ring++) {
+    const y = base - (6 + ring * 16) * s;
+    const rx = (20 + ring * 6) * s;
+    for (let i = 0; i < 16; i++) {
+      const an = t * (3.4 - ring * 0.6) + (i / 16) * TAU + ring;
+      if ((Math.sin(an) > 0) !== near) continue;
+      const x = cx + Math.cos(an) * rx, yy = y + Math.sin(an) * rx * 0.25;
+      ctx.fillStyle = i % 3 ? al(p.nightmare ? "hsl(20 30% 22%)" : "hsl(36 50% 64%)", 0.8) : al(p.glow, 0.7);
+      ctx.fillRect(x - 1.2 * s, yy - 1.2 * s, 2.4 * s, 2.4 * s);
+    }
+  }
+}
+
+function siroccoBack(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: number, t: number, alive: boolean, act: QuestAct | undefined, p: QuestPaint) {
+  ctx.save();
+  // a long desert scarf from the neck, streaming out behind and fraying into sand at the end
+  const back = -face;
+  const lift = act && act.phase === "strike" ? 1.5 : 1;
+  const n = 8;
+  const top: Pt[] = [];
+  for (let i = 0; i <= n; i++) {
+    const k = i / n;
+    top.push({
+      x: r.neck.x + back * k * 56 * s,
+      y: r.neck.y + 2 * s + k * 10 * s + Math.sin(t * 4.2 - k * 5) * k * 8 * s * lift + (alive ? 0 : k * 22 * s),
+    });
+  }
+  ctx.fillStyle = p.nightmare ? "hsl(14 40% 14%)" : "hsl(22 70% 46%)";
+  ctx.beginPath();
+  top.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+  for (let i = n; i >= 0; i--) ctx.lineTo(top[i].x, top[i].y + 6 * s * (1 - (i / n) * 0.4));
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = al(p.glow, alive ? 0.6 : 0.25);
+  ctx.lineWidth = 1 * s;
+  ctx.stroke();
+  // the frayed end blowing away as grains
+  if (alive) {
+    const end = top[n];
+    for (let i = 0; i < 7; i++) {
+      const k = (t * 1.3 + i / 7) % 1;
+      ctx.fillStyle = al(p.nightmare ? "hsl(20 30% 30%)" : "hsl(36 50% 66%)", 0.9 * (1 - k));
+      ctx.fillRect(end.x + back * k * 26 * s, end.y + Math.sin(i * 2.3 + t * 3) * 6 * s + k * 8 * s, 2 * s, 2 * s);
+    }
+  }
+  siroccoSwirl(ctx, r, s, t, alive, p, false);
+  ctx.restore();
+}
+
+function siroccoFront(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: number, t: number, alive: boolean, p: QuestPaint) {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const h = r.head;
+  // a wrapped hood over the head, and a cloth band across the lower face
+  const wrap = p.nightmare ? "hsl(14 40% 14%)" : "hsl(34 40% 72%)";
+  ctx.fillStyle = wrap;
+  ctx.strokeStyle = "hsl(30 30% 20% / 0.8)";
+  ctx.lineWidth = 1.2 * s;
+  ctx.beginPath();
+  ctx.arc(h.x - face * 1 * s, h.y - 1 * s, (HEAD + 2) * s, Math.PI * 1.02, Math.PI * 1.98);
+  ctx.lineTo(h.x + face * 0 * s + (HEAD + 1) * s, h.y - 3.5 * s);
+  ctx.lineTo(h.x - (HEAD + 1) * s, h.y - 3.5 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = p.nightmare ? "hsl(10 60% 24%)" : "hsl(22 70% 46%)";
+  ctx.beginPath();
+  ctx.moveTo(h.x - (HEAD - 1) * s, h.y + 2.5 * s);
+  ctx.lineTo(h.x + (HEAD - 0.5) * s, h.y + 2.5 * s);
+  ctx.lineTo(h.x + face * (HEAD - 2) * s, h.y + 8.5 * s);
+  ctx.lineTo(h.x - face * (HEAD - 4) * s, h.y + 9 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // a slit of glowing eyes between the hood and the band
+  if (alive) {
+    ctx.globalCompositeOperation = "lighter";
+    glowDot(ctx, h.x + face * 5 * s, h.y - 0.5 * s, 6 * s, p.glow, 0.9);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = p.nightmare ? p.b : "hsl(40 100% 80%)";
+    ctx.lineWidth = 1.6 * s;
+    ctx.beginPath();
+    ctx.moveTo(h.x + face * 1.5 * s, h.y - 0.5 * s);
+    ctx.lineTo(h.x + face * 8.5 * s, h.y - 0.5 * s);
+    ctx.stroke();
+    // sand pouring from the front hand
+    for (let i = 0; i < 6; i++) {
+      const k = (t * 1.8 + i / 6) % 1;
+      ctx.fillStyle = al(p.nightmare ? "hsl(20 30% 30%)" : "hsl(38 55% 66%)", 0.9 * (1 - k));
+      ctx.fillRect(r.hF.x + Math.sin(i * 3.1 + t) * 2 * s, r.hF.y + 3 * s + k * 26 * s, 1.8 * s, 1.8 * s);
+    }
+  }
+  // a sash at the waist, its end flicking
+  ctx.strokeStyle = p.nightmare ? "hsl(10 60% 30%)" : "hsl(22 70% 46%)";
+  ctx.lineWidth = 3 * s;
+  const wy = r.hip.y - 4 * s;
+  ctx.beginPath();
+  ctx.moveTo(r.hip.x - 6 * s, wy);
+  ctx.lineTo(r.hip.x + 6 * s, wy);
+  ctx.moveTo(r.hip.x - face * 4 * s, wy);
+  ctx.quadraticCurveTo(r.hip.x - face * 9 * s, wy + 6 * s, r.hip.x - face * (14 + Math.sin(t * 6) * 2) * s, wy + 12 * s);
+  ctx.stroke();
+  siroccoSwirl(ctx, r, s, t, alive, p, true);
+  ctx.restore();
+}
+
 export function drawQuestDesign(
   ctx: CanvasRenderingContext2D, id: Power, layer: "back" | "front", r: BossRig, s: number, face: number, t: number,
   alive: boolean, act: QuestAct | undefined, p: QuestPaint, vx = 0,
@@ -667,4 +915,6 @@ export function drawQuestDesign(
   if (id === "portal") return layer === "back" ? liminalBack(ctx, r, s, t, alive, act, p) : liminalFront(ctx, r, s, face, t, alive, act, p);
   if (id === "sono") return layer === "back" ? overtoneBack(ctx, r, s, t, alive, act, p) : overtoneFront(ctx, r, s, face, t, alive, act, p);
   if (id === "paper") return layer === "back" ? vellumBack(ctx, r, s, face, t, alive, act, p) : vellumFront(ctx, r, s, face, t, alive, p);
+  if (id === "crys") return layer === "back" ? facetBack(ctx, r, s, face, t, alive, act, p) : facetFront(ctx, r, s, face, t, alive, p);
+  if (id === "sand") return layer === "back" ? siroccoBack(ctx, r, s, face, t, alive, act, p) : siroccoFront(ctx, r, s, face, t, alive, p);
 }

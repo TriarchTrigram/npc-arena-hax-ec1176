@@ -82,7 +82,7 @@
       "nextStage": "Next stage",
       "tryAgain": "Try again",
       "changePair": "Change pair",
-      "storyComplete": "Story complete! The Black Sun has set.",
+      "storyComplete": "Story complete! The Axiom has been rewritten.",
       "nextChapter": "Next chapter",
       "dropped": "{{name}} drops to the losers bracket",
       "knockedOut": "{{name}} is knocked out",
@@ -172,7 +172,7 @@
     "versus": "vs",
     "backAria": "Back to the title screen",
     "modes": {
-      "story": "Seven chapters with a fused or teamed-up pair.",
+      "story": "Eight chapters with a fused or teamed-up pair.",
       "duel": "One on one, no distractions.",
       "ffa": "Everyone in, free for all.",
       "teams": "Pick sides and fight together.",
@@ -389,6 +389,21 @@
         "s9": "The Last Light",
         "s10": "The Black Sun's Crown"
       }
+    },
+    "ch8": {
+      "title": "Chapter 8: The Edge of Everything",
+      "stages": {
+        "s1": "Starlit Road",
+        "s2": "Observatory Steps",
+        "s3": "The Slow Orbit",
+        "s4": "Twin Stars",
+        "s5": "Mirror Nebula",
+        "s6": "Asteroid Belt",
+        "s7": "Frozen Comet",
+        "s8": "Event Horizon",
+        "s9": "The Last Star",
+        "s10": "Where Reality Ends"
+      }
     }
   },
   "fusion": {
@@ -463,6 +478,16 @@
         "title": "A Thousand Cranes",
         "reward": "Earns Vellum, Paper Manipulation",
         "story": "Folded paper birds turn up in the corners of the arena, a few more after every fight."
+      },
+      "facet": {
+        "title": "Under Pressure",
+        "reward": "Earns Facet, Crystal Manipulation",
+        "story": "Crystals keep growing up through the cracks in the arena floor, a little bigger after every knockout."
+      },
+      "dunes": {
+        "title": "Shifting Sands",
+        "reward": "Earns Sirocco, Sand Manipulation",
+        "story": "A dune has started creeping in from the edge of the arena, and something under it is waiting."
       }
     },
     "cutscene": {

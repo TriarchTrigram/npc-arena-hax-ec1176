@@ -1,4 +1,4 @@
-// Quests: 7 long goals, each earning a quest fighter for good once it is complete and claimed.
+// Quests: 9 long goals, each earning a quest fighter for good once it is complete and claimed.
 // Progress is counted from finished fights and saved in this browser (localStorage), like Story progress.
 // The arena screen reports each finished fight with `recordFight` and each crowned champion with `recordTournament`.
 import { useEffect, useState } from "react";
@@ -17,13 +17,15 @@ export type Quest = {
 };
 
 export const QUESTS: Quest[] = [
-  { id: "fold", reward: "spatio", goals: [{ stat: "fights", need: 5 }, { stat: "kos", need: 40 }] },
-  { id: "gameover", reward: "hexizon", goals: [{ stat: "tournaments", need: 1 }, { stat: "bosses", need: 1 }, { stat: "forms", need: 5 }] },
-  { id: "gamma", reward: "gamma", goals: [{ stat: "kos", need: 100 }, { stat: "forms", need: 10 }, { stat: "bosses", need: 1 }] },
-  { id: "speed", reward: "velo", goals: [{ stat: "fights", need: 20 }, { stat: "kos", need: 150 }, { stat: "tournaments", need: 1 }] },
-  { id: "portal", reward: "portal", goals: [{ stat: "fights", need: 40 }, { stat: "forms", need: 20 }, { stat: "tournaments", need: 1 }, { stat: "bosses", need: 1 }] },
-  { id: "encore", reward: "sono", goals: [{ stat: "fights", need: 60 }, { stat: "kos", need: 250 }, { stat: "forms", need: 30 }] },
-  { id: "cranes", reward: "paper", goals: [{ stat: "fights", need: 80 }, { stat: "forms", need: 40 }, { stat: "tournaments", need: 1 }, { stat: "bosses", need: 1 }] },
+  { id: "fold", reward: "spatio", goals: [{ stat: "fights", need: 3 }, { stat: "kos", need: 30 }] },
+  { id: "gameover", reward: "hexizon", goals: [{ stat: "tournaments", need: 1 }, { stat: "bosses", need: 1 }, { stat: "forms", need: 3 }] },
+  { id: "gamma", reward: "gamma", goals: [{ stat: "kos", need: 75 }, { stat: "forms", need: 7 }, { stat: "bosses", need: 1 }] },
+  { id: "speed", reward: "velo", goals: [{ stat: "fights", need: 15 }, { stat: "kos", need: 110 }, { stat: "tournaments", need: 1 }] },
+  { id: "portal", reward: "portal", goals: [{ stat: "fights", need: 30 }, { stat: "forms", need: 15 }, { stat: "tournaments", need: 1 }, { stat: "bosses", need: 1 }] },
+  { id: "encore", reward: "sono", goals: [{ stat: "fights", need: 45 }, { stat: "kos", need: 190 }, { stat: "forms", need: 22 }] },
+  { id: "cranes", reward: "paper", goals: [{ stat: "fights", need: 60 }, { stat: "forms", need: 30 }, { stat: "tournaments", need: 1 }, { stat: "bosses", need: 1 }] },
+  { id: "facet", reward: "crys", goals: [{ stat: "fights", need: 70 }, { stat: "kos", need: 280 }, { stat: "forms", need: 35 }, { stat: "bosses", need: 1 }] },
+  { id: "dunes", reward: "sand", goals: [{ stat: "fights", need: 85 }, { stat: "kos", need: 320 }, { stat: "tournaments", need: 1 }, { stat: "bosses", need: 1 }] },
 ];
 
 const KEY = "npc-arena-quests";

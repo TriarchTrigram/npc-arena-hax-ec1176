@@ -1,11 +1,11 @@
-// The 16 fighters and their power moves. Shared by the arena engine and the Fighters page.
+// The 16 fighters, the 9 quest fighters and their power moves. Shared by the arena engine and the Fighters page.
 import { BOSSES, type BossId } from "./bosses";
 
 export type Power =
   | "pyro" | "cryo" | "electro" | "terra" | "aero" | "hydro" | "umbra" | "lux"
   | "gravi" | "tele" | "vita" | "toxi" | "chrono" | "magneto" | "psy" | "shift"
   // quest fighters, earned on the Quests page
-  | "spatio" | "hexizon" | "gamma" | "velo" | "portal" | "sono" | "paper";
+  | "spatio" | "hexizon" | "gamma" | "velo" | "portal" | "sono" | "paper" | "crys" | "sand";
 
 export type Role = "attacker" | "control" | "tank" | "support" | "trickster";
 
@@ -23,7 +23,7 @@ export type MoveKind =
   | "zone"       // lingering field on the ground
   | "pull"       // yank the target in
   | "mimic"      // borrow a move from the last power that hit
-  | "warp"       // boss only: tear reality and move the whole fight to another realm
+  | "warp"       // boss only: tear reality and move the whole fight to another realm (the Riftmaker and the Axiom)
   | "annihilate"; // boss only: matter and antimatter close in on the target from both sides and cancel out
 
 /** Body animation the stickman plays for a move. */
@@ -81,7 +81,7 @@ export type Move = {
 };
 
 /** A Story boss's own body design, drawn by the engine on top of the stickman. */
-export type BossDesign = "antimatter" | "maelstrom" | "magmaw" | "everwinter" | "riftmaker" | "hollow" | "blacksun";
+export type BossDesign = "antimatter" | "maelstrom" | "magmaw" | "everwinter" | "riftmaker" | "hollow" | "blacksun" | "axiom";
 
 export type FighterDef = {
   id: Power;
@@ -424,6 +424,44 @@ export const QUESTERS: FighterDef[] = [
       M({ id: "refold", name: "Refold", kind: "heal", anim: "raise", range: 2000, cd: 11, dmg: 0, heal: 24, below: 0.65, wind: 0.34, rec: 0.3 }),
     ],
   },
+  {
+    id: "crys", name: "Facet", power: "Crystal Manipulation", role: "tank",
+    ability: "Grows crystal out of anything. Spires burst from the floor, gems fly like bullets, light splits through its prisms and its body grows back facet by facet.",
+    color: "hsl(286 38% 60%)", glow: "hsl(172 100% 70%)", hp: 320, speed: 94,
+    moves: [
+      M({ id: "facet-jab", name: "Facet Jab", kind: "melee", anim: "jab", range: 76, cd: 0.85, dmg: 10, kb: 240 }),
+      M({ id: "geode-crush", name: "Geode Crush", kind: "melee", anim: "slam", range: 90, cd: 1.5, dmg: 14, kb: 220, lift: -460, wind: 0.22 }),
+      M({ id: "prism-split", name: "Prism Split", kind: "beam", anim: "thrust", range: 580, minRange: 70, cd: 3, dmg: 16, act: 0.32, kb: 240, status: "blind", statusDur: 0.6, wind: 0.3 }),
+      M({ id: "crystal-spray", name: "Crystal Spray", kind: "projectile", anim: "cast", range: 560, minRange: 80, cd: 2.2, dmg: 5, speed: 680, size: 9, count: 5, spread: 0.16, shape: "shard" }),
+      M({ id: "gem-lance", name: "Gem Lance", kind: "projectile", anim: "thrust", range: 620, minRange: 90, cd: 3, dmg: 13, speed: 600, size: 15, shape: "shard", pierce: true, kb: 280 }),
+      M({ id: "crystal-spire", name: "Crystal Spire", kind: "eruption", anim: "slam", range: 520, minRange: 40, cd: 4.6, dmg: 13, radius: 44, count: 3, lift: -620, wind: 0.32 }),
+      M({ id: "shard-rain", name: "Shard Rain", kind: "rain", anim: "raise", range: 520, cd: 5.5, dmg: 8, count: 6, radius: 150, shape: "shard", wind: 0.32 }),
+      M({ id: "amethyst-field", name: "Amethyst Field", kind: "zone", anim: "slam", range: 400, cd: 8, dmg: 5, radius: 130, dur: 4, status: "slow", statusDur: 0.6, wind: 0.32 }),
+      M({ id: "refraction-step", name: "Refraction Step", kind: "blink", anim: "kick", range: 600, minRange: 110, cd: 3.2, dmg: 13, kb: 300, lift: -240, status: "blind", statusDur: 0.4 }),
+      M({ id: "shatter-nova", name: "Shatter Nova", kind: "burst", anim: "raise", range: 150, cd: 5.5, dmg: 15, radius: 170, kb: 500, lift: -280, wind: 0.3 }),
+      M({ id: "crystal-tether", name: "Crystal Tether", kind: "pull", anim: "cast", range: 460, minRange: 110, cd: 3.8, dmg: 10, status: "slow", statusDur: 0.8 }),
+      M({ id: "regrow-facets", name: "Regrow Facets", kind: "heal", anim: "raise", range: 2000, cd: 12, dmg: 0, heal: 24, below: 0.6, wind: 0.36, rec: 0.3 }),
+    ],
+  },
+  {
+    id: "sand", name: "Sirocco", power: "Sand Manipulation", role: "control",
+    ability: "Commands the desert. Sand that blinds, quicksand that swallows, glass spun out of the heat and a storm that is never where you think it is.",
+    color: "hsl(36 52% 58%)", glow: "hsl(20 100% 60%)", hp: 285, speed: 110,
+    moves: [
+      M({ id: "sand-lash", name: "Sand Lash", kind: "melee", anim: "lunge", range: 120, minRange: 30, cd: 1, dmg: 10, kb: 240 }),
+      M({ id: "dune-kick", name: "Dune Kick", kind: "melee", anim: "kick", range: 92, cd: 1.3, dmg: 12, kb: 280, lift: -400 }),
+      M({ id: "sand-blast", name: "Sand Blast", kind: "projectile", anim: "thrust", range: 520, minRange: 60, cd: 2, dmg: 5, speed: 700, size: 8, count: 5, spread: 0.2, shape: "rock", status: "blind", statusDur: 0.5 }),
+      M({ id: "glass-shard", name: "Glass Shard", kind: "projectile", anim: "cast", range: 620, minRange: 90, cd: 2.8, dmg: 12, speed: 660, size: 13, shape: "shard", pierce: true, kb: 240 }),
+      M({ id: "sand-torrent", name: "Sand Torrent", kind: "beam", anim: "thrust", range: 560, minRange: 70, cd: 3.2, dmg: 15, act: 0.36, kb: 300, status: "blind", statusDur: 0.8, wind: 0.3 }),
+      M({ id: "quicksand", name: "Quicksand", kind: "zone", anim: "slam", range: 420, minRange: 40, cd: 8, dmg: 6, radius: 125, dur: 4, pullIn: 240, status: "slow", statusDur: 0.6, wind: 0.32 }),
+      M({ id: "sand-spike", name: "Sand Spike", kind: "eruption", anim: "slam", range: 500, minRange: 40, cd: 4.4, dmg: 14, radius: 46, count: 2, lift: -640, wind: 0.3 }),
+      M({ id: "sandstorm", name: "Sandstorm", kind: "rain", anim: "raise", range: 540, cd: 5.5, dmg: 7, count: 8, radius: 170, shape: "rock", status: "blind", statusDur: 0.4, wind: 0.32 }),
+      M({ id: "dust-devil", name: "Dust Devil", kind: "burst", anim: "spin", range: 150, cd: 5.5, dmg: 14, radius: 170, kb: 460, lift: -340, status: "blind", statusDur: 0.8, wind: 0.26 }),
+      M({ id: "mirage-step", name: "Mirage Step", kind: "blink", anim: "uppercut", range: 620, minRange: 100, cd: 3, dmg: 13, lift: -540, kb: 180 }),
+      M({ id: "sand-tether", name: "Sand Tether", kind: "pull", anim: "cast", range: 460, minRange: 110, cd: 3.6, dmg: 9, status: "stun", statusDur: 0.35 }),
+      M({ id: "dune-surf", name: "Dune Surf", kind: "dash", anim: "lunge", range: 360, cd: 3.4, dmg: 13, dist: 360, act: 0.22, kb: 340, lift: -180 }),
+    ],
+  },
 ];
 
 export const QUEST_IDS = new Set<Power>(QUESTERS.map((q) => q.id));
@@ -460,6 +498,8 @@ const WINGS: Record<Power, Wing> = {
   portal: { word: "Portal", shape: "disc", status: "slow", statusDur: 1 },
   sono: { word: "Sonic", shape: "wave", status: "stun", statusDur: 0.2 },
   paper: { word: "Paper", shape: "blade", heal: 10 },
+  crys: { word: "Crystal", shape: "shard", status: "slow", statusDur: 1 },
+  sand: { word: "Dune", shape: "rock", status: "blind", statusDur: 0.8 },
 };
 
 export function wingMoves(id: Power): Move[] {

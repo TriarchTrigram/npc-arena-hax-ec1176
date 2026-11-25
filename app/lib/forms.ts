@@ -319,6 +319,28 @@ FORMS.paper = {
     M({ id: "black-crane", name: "Black Crane", kind: "projectile", anim: "thrust", range: 700, minRange: 80, cd: 4.5, dmg: 20, speed: 440, size: 26, shape: "blade", pierce: true, kb: 420, wind: 0.32 }),
   ],
 };
+FORMS.crys = {
+  power: "crys", kind: "nightmare", title: "BLACK DIAMOND", ...NIGHTMARE,
+  blurb: "Its crystal turns to black diamond with red light burning in every facet. Diamonds fall like hail, and shots that fly into its prison shatter.",
+  body: "hsl(280 20% 8%)", glow: "hsl(350 100% 60%)", a: "hsl(340 90% 44%)", b: "hsl(172 100% 74%)", dark: "hsl(0 0% 0%)",
+  dmg: 1.3, kb: 1.25, cd: 0.7, speed: 1.15, act: 1.2,
+  moves: [
+    M({ id: "diamond-storm", name: "Diamond Storm", kind: "rain", anim: "raise", range: 580, cd: 6, dmg: 10, count: 8, radius: 190, shape: "shard", wind: 0.34, rec: 0.3 }),
+    M({ id: "obsidian-prison", name: "Obsidian Prison", kind: "zone", anim: "slam", range: 420, cd: 9, dmg: 8, radius: 150, dur: 4, pullIn: 280, erase: true, status: "slow", statusDur: 0.6, wind: 0.36 }),
+    M({ id: "spectrum-ray", name: "Spectrum Ray", kind: "beam", anim: "thrust", range: 880, minRange: 60, cd: 5, dmg: 24, act: 0.4, kb: 400, status: "blind", statusDur: 1, wind: 0.4 }),
+  ],
+};
+FORMS.sand = {
+  power: "sand", kind: "nightmare", title: "ENDLESS DESERT", ...NIGHTMARE,
+  blurb: "The sand turns black and the sun behind it burns red. A wall of dust swallows the arena, glass tombs burst from the floor and the dunes roll over everyone.",
+  body: "hsl(20 30% 10%)", glow: "hsl(10 100% 56%)", a: "hsl(16 90% 46%)", b: "hsl(40 90% 70%)", dark: "hsl(20 40% 3%)",
+  dmg: 1.3, kb: 1.2, cd: 0.7, speed: 1.25, act: 1.2,
+  moves: [
+    M({ id: "haboob", name: "Haboob", kind: "zone", anim: "raise", range: 440, cd: 9, dmg: 8, radius: 180, dur: 4.5, pullIn: 200, status: "blind", statusDur: 0.8, wind: 0.36 }),
+    M({ id: "glass-tomb", name: "Glass Tomb", kind: "eruption", anim: "slam", range: 620, minRange: 40, cd: 6.5, dmg: 13, radius: 46, count: 5, lift: -680, status: "stun", statusDur: 0.4, wind: 0.36 }),
+    M({ id: "sand-sea", name: "Sand Sea", kind: "projectile", anim: "slam", range: 900, minRange: 60, cd: 6, dmg: 18, speed: 360, size: 30, pierce: true, ground: true, shape: "wave", kb: 420, lift: -320, status: "blind", statusDur: 1, wind: 0.4, rec: 0.35 }),
+  ],
+};
 
 /** Pyro's second step: from Blue Flame into red and blue fire at once. Stronger and faster than his Rage Mode. */
 export const PERFECTED_FLAME: Form = {

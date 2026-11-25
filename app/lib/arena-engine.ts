@@ -77,6 +77,8 @@ const BOSS_STANCE: Record<BossDesign, Pose> = {
   hollow: { t: 0.28, aF1: 1.0, aF2: 1.45, aB1: 0.8, aB2: 1.35, lF1: 0.42, lF2: -0.05, lB1: -0.35, lB2: -0.2 },
   // The Black Sun: arms folded across the chest, chin up
   blacksun: { t: -0.08, aF1: 1.15, aF2: 2.7, aB1: 1.0, aB2: 2.6, lF1: 0.22, lF2: 0.0, lB1: -0.22, lB2: -0.05 },
+  // The Axiom: floating upright, both arms spread wide and low, palms open, as if holding the sky up
+  axiom: { t: -0.04, aF1: 0.95, aF2: 1.25, aB1: -0.95, aB2: -1.25, lF1: 0.12, lF2: -0.08, lB1: -0.1, lB2: -0.2 },
 };
 /** How each boss breathes at rest: speed, torso sway, arm sway (front, back) and knee bob. */
 const BOSS_IDLE: Record<BossDesign, { hz: number; t: number; aF: number; aB: number; l: number }> = {
@@ -87,6 +89,7 @@ const BOSS_IDLE: Record<BossDesign, { hz: number; t: number; aF: number; aB: num
   riftmaker: { hz: 4.5, t: 0.03, aF: 0.14, aB: -0.12, l: 0.02 },
   hollow: { hz: 1.8, t: 0.05, aF: 0.05, aB: 0.05, l: 0.03 },
   blacksun: { hz: 1.4, t: 0.02, aF: 0.03, aB: 0.03, l: 0 },
+  axiom: { hz: 1.1, t: 0.02, aF: 0.1, aB: -0.1, l: 0.03 },
 };
 /** Hybrids pick one of these by their pair, so the same pair always stands the same way: two powers held ready at once. */
 const HYBRID_STANCES: Pose[] = [
@@ -115,6 +118,10 @@ const QUEST_STANCE: Partial<Record<Power, Pose>> = {
   sono: { t: 0.1, aF1: 1.25, aF2: 1.95, aB1: 1.95, aB2: 3.55, lF1: 0.5, lF2: 0.05, lB1: -0.42, lB2: -0.18 },
   // Vellum: light as paper, a fan held out in front, the other arm swept back, back toe pointed
   paper: { t: 0.04, aF1: 1.7, aF2: 2.2, aB1: -1.3, aB2: -0.6, lF1: 0.38, lF2: 0.0, lB1: -0.2, lB2: -0.35 },
+  // Facet: planted like a wall, both forearms raised in a high guard with the crystal fists in front of the face
+  crys: { t: 0.12, aF1: 1.05, aF2: 2.75, aB1: 0.75, aB2: 2.6, lF1: 0.6, lF2: 0.1, lB1: -0.55, lB2: -0.22 },
+  // Sirocco: low and side-on, front hand trailing a stream of sand, back hand raised to the sky
+  sand: { t: 0.26, aF1: 1.35, aF2: 1.1, aB1: 2.4, aB2: 2.9, lF1: 0.75, lF2: -0.05, lB1: -0.62, lB2: -0.45 },
 };
 const pairHash = (a: Power, b: Power) => [a, b].sort().join("+").split("").reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 /** The rest stance this fighter stands in. */
@@ -140,8 +147,8 @@ function idlePose(f: Fighter, gt: number): Pose {
   }
   if (QUEST_STANCE[f.def.id]) {
     // Parallax drifts slowly, Hexizon bobs on the balls of his feet, Halflife heaves, Redline can't stand still, Liminal sways,
-    // Overtone nods to a beat, Vellum drifts like a sheet on the air
-    const hz = ({ hexizon: 5.5, gamma: 2.6, velo: 9, portal: 1.4, sono: 7.5, paper: 1.2 } as Partial<Record<Power, number>>)[f.def.id] ?? 1.8;
+    // Overtone nods to a beat, Vellum drifts like a sheet on the air, Facet barely moves, Sirocco sways like heat haze
+    const hz = ({ hexizon: 5.5, gamma: 2.6, velo: 9, portal: 1.4, sono: 7.5, paper: 1.2, crys: 1, sand: 3.4 } as Partial<Record<Power, number>>)[f.def.id] ?? 1.8;
     const b = Math.sin(gt * hz + f.key);
     return { ...st, t: st.t + b * 0.03, aF2: st.aF2 + b * 0.06, aB2: st.aB2 + b * 0.06, lF1: st.lF1 + b * 0.04, lB1: st.lB1 - b * 0.04 };
   }
@@ -249,6 +256,8 @@ const FX: Record<Power, { shape: PShape; add: boolean; grav: number }> = {
   portal: { shape: "ring", add: true, grav: 0 },
   sono: { shape: "ring", add: true, grav: 0 },
   paper: { shape: "leaf", add: false, grav: 120 },
+  crys: { shape: "shard", add: true, grav: 300 },
+  sand: { shape: "dust", add: false, grav: 420 },
 };
 
 // ---------- Forms ----------

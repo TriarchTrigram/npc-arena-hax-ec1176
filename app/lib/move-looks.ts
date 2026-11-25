@@ -255,7 +255,8 @@ const FORM_LOOKS: Record<string, Look> = {
   "endless-night": F("total-eclipse", "hsl(250 50% 4%)", "hsl(44 100% 76%)", "star", true, 0, "starburst"),
 };
 // ---------- quest fighters ----------
-// Parallax (space), Hexizon (indie games), Halflife (gamma), Redline (speed), Liminal (portals and matter), Overtone (sound) and Vellum (paper).
+// Parallax (space), Hexizon (indie games), Halflife (gamma), Redline (speed), Liminal (portals and matter), Overtone (sound), Vellum (paper),
+// Facet (crystal) and Sirocco (sand).
 // Their signature moves have hand-drawn looks of their own (Spatial Cut, Spatial Prison, Gaster Blaster, Bone Barrage, Bone Zone, Jumbo Roundabout,
 // Blaster Storm, Gamma Ray, Mach Rush, Ring Gate, Power Chord, Staccato, Wall of Sound, Crane Flock, Shuriken Fold, Scroll Unfurl);
 // the rest borrow a signature (`sig`) drawn in their own colours, like the form moves.
@@ -374,6 +375,51 @@ const QUEST_LOOKS: Record<string, Look> = {
   "thousand-cranes": F("crane-flock", "hsl(0 0% 12%)", "hsl(352 100% 58%)", "leaf", false, 200, "slash"),
   "ink-flood": F("miasma-cloud", "hsl(0 0% 6%)", "hsl(352 100% 56%)", "smoke", false, -40, "splat"),
   "black-crane": F("crane-flock", "hsl(0 0% 10%)", "hsl(352 100% 60%)", "leaf", false, 100, "slash"),
+  // Facet
+  "facet-jab": F("flash-jab", "hsl(286 45% 64%)", "hsl(172 100% 78%)", "shard", true, 200, "shatter"),
+  "geode-crush": F("boulder-fist", "hsl(280 35% 42%)", "hsl(172 100% 74%)", "shard", false, 600, "crater"),
+  "prism-split": F("prism-beam", "hsl(286 60% 64%)", "hsl(172 100% 82%)", "shard", true, 0, "starburst"),
+  "crystal-spray": F("ice-shard-volley", "hsl(290 50% 70%)", "hsl(172 100% 82%)", "shard", true, 200, "shatter"),
+  "gem-lance": F("railgun", "hsl(282 55% 54%)", "hsl(172 100% 78%)", "shard", true, 0, "shatter"),
+  "crystal-spire": F("glacier-spike", "hsl(286 45% 60%)", "hsl(172 100% 78%)", "shard", false, 400, "shatter"),
+  "shard-rain": F("light-lances", "hsl(290 50% 66%)", "hsl(172 100% 84%)", "shard", true, 300, "shatter"),
+  "amethyst-field": F("frozen-floor", "hsl(282 50% 48%)", "hsl(172 100% 76%)", "shard", true, 0),
+  "refraction-step": F("warp-kick", "hsl(286 60% 66%)", "hsl(172 100% 84%)", "spark", true, 0, "starburst"),
+  "shatter-nova": F("rift-burst", "hsl(286 45% 62%)", "hsl(172 100% 80%)", "shard", false, 500, "shatter"),
+  "crystal-tether": F("magnet-pull", "hsl(282 50% 56%)", "hsl(172 100% 78%)", "shard", true, 0, "implode"),
+  "regrow-facets": F("mend", "hsl(286 50% 66%)", "hsl(172 100% 80%)", "shard", true, -120),
+  "diamond-storm": F("light-lances", "hsl(280 20% 12%)", "hsl(350 100% 62%)", "shard", true, 300, "shatter"),
+  "obsidian-prison": F("spatial-prison", "hsl(280 20% 8%)", "hsl(350 100% 60%)", "shard", true, 0),
+  "spectrum-ray": F("prism-beam", "hsl(340 90% 50%)", "hsl(172 100% 80%)", "spark", true, 0, "starburst"),
+  // Sirocco
+  "sand-lash": F("water-whip", "hsl(36 55% 58%)", "hsl(26 100% 64%)", "dust", false, 300, "slash"),
+  "dune-kick": F("gale-kick", "hsl(34 50% 54%)", "hsl(26 100% 66%)", "dust", false, 300, "swirl"),
+  "sand-blast": F("rock-toss", "hsl(38 50% 60%)", "hsl(28 100% 68%)", "dust", false, 300, "fizz"),
+  "glass-shard": F("ice-shard-volley", "hsl(180 30% 82%)", "hsl(24 100% 64%)", "shard", true, 200, "shatter"),
+  "sand-torrent": F("solar-flare", "hsl(36 55% 56%)", "hsl(30 100% 70%)", "dust", false, 200, "fizz"),
+  "quicksand": F("magma-lake", "hsl(34 45% 38%)", "hsl(28 100% 62%)", "dust", false, 0, "implode"),
+  "sand-spike": F("earth-spike", "hsl(36 50% 52%)", "hsl(26 100% 64%)", "dust", false, 800, "crater"),
+  "sandstorm": F("meteor-drop", "hsl(36 50% 56%)", "hsl(28 100% 66%)", "dust", false, 500, "fizz"),
+  "dust-devil": F("quake-stomp", "hsl(38 45% 60%)", "hsl(26 100% 66%)", "dust", false, -100, "swirl"),
+  "mirage-step": F("shadow-step", "hsl(28 80% 60%)", "hsl(44 100% 80%)", "dust", false, -60, "swirl"),
+  "sand-tether": F("magnet-pull", "hsl(36 50% 54%)", "hsl(26 100% 64%)", "dust", false, 0, "implode"),
+  "dune-surf": F("mach-rush", "hsl(36 55% 56%)", "hsl(26 100% 66%)", "dust", false, 200, "crater"),
+  "haboob": F("miasma-cloud", "hsl(20 40% 18%)", "hsl(10 100% 58%)", "dust", false, -40, "fizz"),
+  "glass-tomb": F("glacier-spike", "hsl(14 40% 30%)", "hsl(10 100% 60%)", "shard", true, 300, "shatter"),
+  "sand-sea": F("tidal-wall", "hsl(20 40% 16%)", "hsl(10 100% 58%)", "dust", false, 400, "splash"),
+  // The Axiom, cosmic reality warping (a Story boss, kept here because every one of its moves borrows a signature)
+  "galaxy-fist": F("mind-jab", "hsl(260 70% 40%)", "hsl(272 100% 84%)", "star", true, 0, "starburst"),
+  "cosmic-rewrite": F("reality-warp", "hsl(272 100% 62%)", "hsl(48 100% 84%)", "star", true, 0),
+  "cosmic-string": F("dimension-tear", "hsl(240 60% 8%)", "hsl(272 100% 82%)", "star", true, 0, "portal"),
+  "star-shower": F("light-lances", "hsl(48 100% 70%)", "hsl(0 0% 100%)", "star", true, 200, "starburst"),
+  "event-horizon": F("singularity", "hsl(250 70% 6%)", "hsl(272 100% 78%)", "star", true, 0, "implode"),
+  "wormhole-step": F("warp-kick", "hsl(250 70% 30%)", "hsl(272 100% 84%)", "star", true, 0, "portal"),
+  "planet-toss": F("meteor-drop", "hsl(290 50% 40%)", "hsl(200 100% 80%)", "chunk", false, 600, "crater"),
+  "nebula-veil": F("night-veil", "hsl(290 70% 30%)", "hsl(200 100% 80%)", "smoke", false, -30),
+  "supercluster": F("phase-shot", "hsl(48 100% 72%)", "hsl(0 0% 100%)", "star", true, 0, "starburst"),
+  "gravity-well": F("gravity-pull", "hsl(240 80% 30%)", "hsl(48 100% 82%)", "star", true, 0, "implode"),
+  "big-bang": F("rift-burst", "hsl(0 0% 100%)", "hsl(272 100% 76%)", "star", true, 0, "starburst"),
+  "heat-death": F("total-eclipse", "hsl(250 60% 4%)", "hsl(272 100% 80%)", "star", true, 0, "starburst"),
 };
 for (const [id, lk] of Object.entries(QUEST_LOOKS)) FORM_LOOKS[id] = lk;
 for (const [id, lk] of Object.entries(FORM_LOOKS)) {

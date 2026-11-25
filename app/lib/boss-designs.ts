@@ -768,6 +768,74 @@ export function drawBossDesign(
       }
       break;
     }
+    // ----- The Axiom: a spiral galaxy turning behind it, a ringed void for a head, constellations on its limbs -----
+    case "axiom": {
+      if (layer === "back") {
+        if (alive) {
+          // the galaxy: two arms of stars turning slowly behind the body
+          const gx = mid.x - face * 6 * s, gy = mid.y - 18 * s;
+          ctx.globalCompositeOperation = "lighter";
+          glow(ctx, gx, gy, 70 * s, "hsl(272 100% 70% / 0.4)", "hsl(236 80% 40% / 0)");
+          for (let arm = 0; arm < 2; arm++) {
+            for (let i = 0; i < 34; i++) {
+              const k = i / 33;
+              const an = t * 0.5 + arm * Math.PI + k * 4;
+              const rr = (8 + k * 62) * s;
+              ctx.fillStyle = i % 6 === 0 ? "hsl(48 100% 86% / 0.95)" : `hsl(${272 - k * 80} 100% 78% / ${0.85 - k * 0.5})`;
+              ctx.beginPath();
+              ctx.arc(gx + Math.cos(an) * rr, gy + Math.sin(an) * rr * 0.45, (2.2 - k * 1.1) * s, 0, TAU);
+              ctx.fill();
+            }
+          }
+          glow(ctx, gx, gy, 12 * s, "hsl(0 0% 100% / 0.9)", "hsl(272 100% 80% / 0)");
+          ctx.globalCompositeOperation = "source-over";
+        }
+        // a planet's ring behind the head (its near half is drawn on the front pass)
+        ctx.strokeStyle = alive ? "hsl(48 100% 78% / 0.85)" : "hsl(240 20% 40%)";
+        ctx.lineWidth = 2.4 * s;
+        ctx.beginPath();
+        ctx.ellipse(head.x, head.y, 22 * s, 6 * s, -0.25 * face, Math.PI, TAU);
+        ctx.stroke();
+      } else {
+        // the head is open sky: a void with a few stars in it
+        ctx.fillStyle = "hsl(240 60% 6%)";
+        ctx.beginPath();
+        ctx.arc(head.x, head.y, (HEAD - 1) * s, 0, TAU);
+        ctx.fill();
+        if (alive) {
+          ctx.fillStyle = "white";
+          for (let i = 0; i < 5; i++) {
+            const a = i * 2.4 + t * 0.3, rr = (2 + (i % 3) * 2.4) * s;
+            ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 4 + i * 1.7);
+            ctx.fillRect(head.x + Math.cos(a) * rr, head.y + Math.sin(a) * rr, 1.5 * s, 1.5 * s);
+          }
+          ctx.globalAlpha = 1;
+          // three eyes: stars in a row across the brow
+          ctx.globalCompositeOperation = "lighter";
+          for (let i = 0; i < 3; i++) glow(ctx, head.x + face * (1 + i * 3.4) * s, head.y - (1.5 + (i === 1 ? 1.5 : 0)) * s, 3.4 * s, "hsl(0 0% 100%)", "hsl(272 100% 80% / 0)");
+          ctx.globalCompositeOperation = "source-over";
+        }
+        ctx.strokeStyle = alive ? "hsl(48 100% 78% / 0.9)" : "hsl(240 20% 40%)";
+        ctx.lineWidth = 2.4 * s;
+        ctx.beginPath();
+        ctx.ellipse(head.x, head.y, 22 * s, 6 * s, -0.25 * face, 0, Math.PI);
+        ctx.stroke();
+        // constellations traced along the limbs: a star at every joint, joined by fine lines
+        if (alive) {
+          ctx.globalCompositeOperation = "lighter";
+          ctx.strokeStyle = "hsl(272 100% 84% / 0.55)";
+          ctx.lineWidth = 0.9 * s;
+          for (const chain of [[shoulder, p.eF, p.hF], [shoulder, p.eB, p.hB], [hip, p.kF, p.fF], [hip, p.kB, p.fB], [neck, mid, hip]]) {
+            ctx.beginPath();
+            chain.forEach((q, i) => (i ? ctx.lineTo(q.x + face * 2 * s, q.y - 2 * s) : ctx.moveTo(q.x + face * 2 * s, q.y - 2 * s)));
+            ctx.stroke();
+            chain.forEach((q, i) => glow(ctx, q.x + face * 2 * s, q.y - 2 * s, (2.6 + Math.sin(t * 5 + i + q.x) * 0.6) * s, "hsl(0 0% 100%)", "hsl(272 100% 80% / 0)"));
+          }
+          ctx.globalCompositeOperation = "source-over";
+        }
+      }
+      break;
+    }
   }
   ctx.restore();
   if (layer === "front") drawBossExtras(ctx, design, layer, p, s, face, t, alive, vx, act);
@@ -1346,6 +1414,91 @@ function drawBossPhase(
       }
       break;
     }
+    // ----- The Axiom -----
+    case "axiom": {
+      // 2: a nebula blooming in its chest and three small worlds in orbit
+      if (!front) {
+        ctx.globalCompositeOperation = "lighter";
+        glow(ctx, mid.x, mid.y - 8 * s, (44 + Math.sin(t * 2) * 4) * s, "hsl(300 100% 70% / 0.5)", "hsl(200 100% 60% / 0)");
+        glow(ctx, mid.x + face * 8 * s, mid.y - 16 * s, 26 * s, "hsl(200 100% 76% / 0.45)", "hsl(200 100% 60% / 0)");
+        ctx.globalCompositeOperation = "source-over";
+      }
+      orbit(3, 52, 16, mid.y - 6 * s, 1.1, (x, y, i) => {
+        const cols = ["hsl(200 80% 60%)", "hsl(20 80% 56%)", "hsl(290 60% 62%)"];
+        ctx.fillStyle = cols[i];
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 1.2 * s;
+        ctx.beginPath();
+        ctx.arc(x, y, (5 + i) * s, 0, TAU);
+        ctx.fill();
+        ctx.stroke();
+        if (i === 1) {
+          ctx.strokeStyle = "hsl(44 80% 76%)";
+          ctx.beginPath();
+          ctx.ellipse(x, y, 10 * s, 3 * s, -0.3, 0, TAU);
+          ctx.stroke();
+        }
+      });
+      if (phase >= 3) {
+        if (front) {
+          // 3: a crown of stars over its head
+          ctx.globalCompositeOperation = "lighter";
+          for (let i = 0; i < 7; i++) {
+            const an = -Math.PI / 2 + (i - 3) * 0.36;
+            const rr = (HEAD + 12 + (i % 2 ? 0 : 5)) * s;
+            const x = head.x + Math.cos(an) * rr, y = head.y + Math.sin(an) * rr;
+            glow(ctx, x, y, (5 + Math.sin(t * 6 + i) * 1.2) * s, "hsl(0 0% 100%)", "hsl(48 100% 80% / 0)");
+          }
+          ctx.globalCompositeOperation = "source-over";
+        } else {
+          // and a second galaxy turning the other way, tilted
+          const gx = mid.x + back * 18 * s, gy = mid.y - 30 * s;
+          ctx.globalCompositeOperation = "lighter";
+          for (let i = 0; i < 40; i++) {
+            const k = i / 39;
+            const an = -t * 0.7 + (i % 2) * Math.PI + k * 3.6;
+            const rr = (6 + k * 80) * s;
+            ctx.fillStyle = `hsl(${48 - k * 20} 100% 80% / ${0.7 - k * 0.45})`;
+            ctx.beginPath();
+            ctx.arc(gx + Math.cos(an) * rr * 0.5, gy + Math.sin(an) * rr, (1.9 - k) * s, 0, TAU);
+            ctx.fill();
+          }
+          ctx.globalCompositeOperation = "source-over";
+        }
+      }
+      if (phase >= 4 && !front) {
+        // 4: a black hole behind it, its accretion disc burning white
+        const bx = head.x + back * 10 * s, by = mid.y - 34 * s;
+        ctx.globalCompositeOperation = "lighter";
+        glow(ctx, bx, by, (96 + Math.sin(t * 5) * 6) * s, "hsl(272 100% 80% / 0.55)", "hsl(250 80% 40% / 0)");
+        ctx.strokeStyle = "hsl(48 100% 88% / 0.9)";
+        ctx.lineWidth = 5 * s;
+        ctx.beginPath();
+        ctx.ellipse(bx, by, 58 * s, 14 * s, 0.15, 0, TAU);
+        ctx.stroke();
+        ctx.strokeStyle = "hsl(0 0% 100% / 0.8)";
+        ctx.lineWidth = 2 * s;
+        ctx.beginPath();
+        ctx.arc(bx, by, 32 * s, 0, TAU);
+        ctx.stroke();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = "hsl(0 0% 0%)";
+        ctx.beginPath();
+        ctx.arc(bx, by, 30 * s, 0, TAU);
+        ctx.fill();
+        // matter spiralling in
+        ctx.globalCompositeOperation = "lighter";
+        for (let i = 0; i < 12; i++) {
+          const k = (t * 0.6 + i / 12) % 1;
+          const an = i * 2.1 + k * 6;
+          const rr = (90 - k * 58) * s;
+          ctx.fillStyle = `hsl(272 100% 84% / ${0.9 * k})`;
+          ctx.fillRect(bx + Math.cos(an) * rr, by + Math.sin(an) * rr * 0.4, 2 * s, 2 * s);
+        }
+        ctx.globalCompositeOperation = "source-over";
+      }
+      break;
+    }
   }
   ctx.restore();
 }
@@ -1528,6 +1681,21 @@ function drawBossExtras(
       } else {
         pauldron(ctx, shoulder, face, s, "hsl(42 85% 52%)", "hsl(30 80% 30%)", 3);
         fists("hsl(48 100% 80%)", "hsl(24 100% 50% / 0)");
+      }
+      break;
+    case "axiom":
+      if (layer === "back") {
+        // a cape of night sky, stars drifting across it
+        cape(38, "hsl(240 60% 8% / 0.95)", "hsl(272 100% 80% / 0.85)", 6);
+        if (alive) {
+          ctx.globalCompositeOperation = "lighter";
+          motes(ctx, hip.x + back * 16 * s, hip.y + 10 * s, 30 * s, 70 * s, t * 0.4, 10, "hsl(0 0% 100%)", 1.4 * s, -1);
+          motes(ctx, mid.x, hip.y, 80 * s, 130 * s, t, 8, "hsl(272 100% 82%)", 1.7 * s);
+          ctx.globalCompositeOperation = "source-over";
+        }
+      } else {
+        pauldron(ctx, shoulder, face, s, "hsl(240 50% 16%)", "hsl(48 100% 76%)", 0);
+        fists("hsl(272 100% 88%)", "hsl(240 100% 60% / 0)");
       }
       break;
   }

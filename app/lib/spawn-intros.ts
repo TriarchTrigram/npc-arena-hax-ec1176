@@ -1311,9 +1311,100 @@ export const INTROS: Record<Power, IntroSpec> = {
     },
   },
 
+  // Facet: crystals punch up out of the floor in a tight cluster, grow taller and close over the spot, then the whole
+  // cluster shatters outward and Facet is standing in the middle, still glassy for a moment.
+  crys: {
+    len: 1.8, hit: 0.6, shake: 9, wave: ["hsl(286 45% 66%)", "hsl(172 100% 76%)"],
+    body: (u, s) => base(u < 0.6 ? "crouch" : settle(u, "guard", 0.78), {
+      alpha: seg(u, 0.56, 0.62),
+      solid: "hsl(286 60% 84%)", solidA: 1 - seg(u, 0.6, 0.88),
+    }),
+    bursts: [
+      { at: 0.6, n: 36, spd: 460, shape: "shard", a: "hsl(286 50% 70%)", b: "hsl(172 100% 82%)", grav: 700, add: true, from: "body", dir: "out" },
+      { at: 0.6, n: 14, spd: 300, shape: "shard", a: "hsl(0 0% 100%)", b: "hsl(172 100% 88%)", grav: 500, add: true, from: "feet", dir: "up" },
+    ],
+    back: ({ ctx, x, ground, s, u, t }) => {
+      if (u >= 0.6) return;
+      ctx.save();
+      const grow = easeOut(seg(u, 0.05, 0.52));
+      // seven crystals of different heights leaning in over the spot
+      for (let i = 0; i < 7; i++) {
+        const k = (i - 3) / 3;
+        const delay = Math.abs(k) * 0.18;
+        const g = clamp((grow - delay) / (1 - delay), 0, 1);
+        if (g <= 0) continue;
+        const h = (110 - Math.abs(k) * 55) * s * g;
+        const w = (13 - Math.abs(k) * 3) * s;
+        const bx = x + k * 30 * s;
+        ctx.save();
+        ctx.translate(bx, ground);
+        ctx.rotate(-k * 0.28);
+        ctx.fillStyle = i % 2 ? "hsl(286 40% 58% / 0.92)" : "hsl(280 45% 46% / 0.92)";
+        ctx.strokeStyle = "hsl(172 100% 80%)";
+        ctx.lineWidth = 1.6 * s;
+        ctx.beginPath();
+        ctx.moveTo(-w, 0); ctx.lineTo(-w, -h + w); ctx.lineTo(0, -h); ctx.lineTo(w, -h + w); ctx.lineTo(w, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        // a bright facet line down one face
+        ctx.strokeStyle = hsla(0, 0, 100, 0.55 + 0.3 * Math.sin(t * 6 + i));
+        ctx.beginPath(); ctx.moveTo(-w * 0.35, -4 * s); ctx.lineTo(-w * 0.35, -h + w * 1.2); ctx.stroke();
+        ctx.restore();
+      }
+      // light building inside the cluster just before it breaks
+      const charge = seg(u, 0.4, 0.6);
+      if (charge > 0) {
+        ctx.globalCompositeOperation = "lighter";
+        glow(ctx, x, ground - 50 * s, 70 * s * charge, 90 * s * charge, hsla(172, 100, 80, 0.7 * charge), hsla(286, 60, 60, 0));
+      }
+      ctx.restore();
+    },
+  },
+
+  // Sirocco: a dust devil drifts in across the floor, spins tighter and taller on the spot, and when it stops the sand
+  // pours off and Sirocco is left standing in it.
+  sand: {
+    len: 1.8, hit: 0.64, shake: 6, wave: ["hsl(36 55% 60%)", "hsl(20 100% 60%)"],
+    body: (u, s) => base(u < 0.64 ? "float" : settle(u, "flex", 0.8), {
+      alpha: seg(u, 0.5, 0.66),
+      sx: 0.7 + 0.3 * easeOut(seg(u, 0.5, 0.7)),
+      solid: "hsl(36 55% 62%)", solidA: 1 - seg(u, 0.64, 0.9),
+    }),
+    bursts: [
+      { at: 0.64, n: 40, spd: 360, shape: "dust", a: "hsl(36 50% 60%)", b: "hsl(40 60% 74%)", grav: 500, add: false, from: "body", dir: "out" },
+      { at: 0.64, n: 22, spd: 300, shape: "dust", a: "hsl(34 45% 52%)", b: "hsl(26 100% 64%)", grav: 200, add: false, from: "feet", dir: "flat" },
+    ],
+    trickle: { rate: 40, until: 0.64, spd: 160, shape: "dust", a: "hsl(36 50% 62%)", b: "hsl(40 55% 76%)", grav: 120, add: false, from: "feet", dir: "up", life: 0.6 },
+    back: ({ ctx, x, ground, s, u, t }) => {
+      const fade = 1 - seg(u, 0.6, 0.78);
+      if (fade <= 0) return;
+      ctx.save();
+      // it comes in from the side, then holds still on the spot
+      const cx = x + (1 - easeOut(seg(u, 0, 0.35))) * -260 * s;
+      const tall = (60 + 90 * easeOut(seg(u, 0.2, 0.6))) * s;
+      // the funnel: stacked rings of sand, narrow at the floor, wide at the top, each spinning
+      for (let i = 0; i < 14; i++) {
+        const k = i / 13;
+        const ry = ground - k * tall;
+        const rx = (8 + k * k * 46) * s;
+        const sway = Math.sin(t * 5 + k * 4) * 6 * s * k;
+        ctx.strokeStyle = hsla(36, 50, 62 - k * 10, (0.35 + 0.45 * (1 - k)) * fade);
+        ctx.lineWidth = (3.2 - k * 1.6) * s;
+        ctx.beginPath();
+        const a0 = t * 14 + i;
+        ctx.ellipse(cx + sway, ry, rx, rx * 0.22, 0, a0, a0 + Math.PI * 1.4);
+        ctx.stroke();
+      }
+      // the low sun-coloured haze it drags with it
+      glow(ctx, cx, ground - tall * 0.4, 70 * s, tall * 0.6, hsla(26, 100, 60, 0.22 * fade), hsla(26, 100, 60, 0));
+      ctx.restore();
+    },
+  },
+
 };
 
-// ---------- the 7 Story bosses ----------
+// ---------- the 8 Story bosses ----------
 // A boss never borrows an element's entrance: each has its own, longer one.
 const BOSS_LEN = 2.2;
 /** A colour string "hsl(h s% l%)" with an alpha added. */
@@ -1783,6 +1874,63 @@ export const BOSS_INTROS: Record<BossDesign, IntroSpec> = {
       ctx.restore();
     },
   },
+  // The Axiom: the arena goes to open space, a spiral galaxy turns in the sky and falls toward the spot, collapses
+  // into one bright point, and the boss unfolds out of it.
+  axiom: {
+    len: BOSS_LEN, hit: 0.66, shake: 16, wave: ["hsl(272 100% 80%)", "hsl(236 55% 12%)"],
+    body: (u, s) => base(u < 0.66 ? "float" : settle(u, "guard", 0.82), {
+      alpha: seg(u, 0.62, 0.7),
+      sx: 0.1 + 0.9 * easeOut(seg(u, 0.62, 0.8)), sy: 0.1 + 0.9 * easeOut(seg(u, 0.62, 0.8)),
+      dy: -(1 - easeOut(seg(u, 0.62, 0.8))) * 60 * s,
+      solid: "hsl(48 100% 92%)", solidA: 1 - seg(u, 0.7, 0.92),
+    }),
+    bursts: [
+      { at: 0.66, n: 44, spd: 560, shape: "star", a: "hsl(272 100% 80%)", b: "hsl(48 100% 86%)", grav: 0, add: true, from: "body", dir: "out" },
+      { at: 0.66, n: 20, spd: 300, shape: "star", a: "hsl(200 100% 84%)", b: "hsl(0 0% 100%)", grav: 0, add: true, from: "body", dir: "out", life: 1.1 },
+    ],
+    trickle: { rate: 26, until: 0.66, spd: 200, shape: "star", a: "hsl(272 100% 82%)", b: "hsl(48 100% 86%)", grav: 0, add: true, from: "body", dir: "in", life: 0.5 },
+    back: ({ ctx, x, y, s, u, t }) => {
+      const dark = easeOut(seg(u, 0, 0.18)) * (1 - seg(u, 0.78, 1));
+      if (dark <= 0) return;
+      ctx.save();
+      ctx.fillStyle = hsla(240, 60, 4, 0.62 * dark);
+      ctx.fillRect(-400, -400, 2000, 1200);
+      // a scatter of fixed stars across the dark
+      ctx.fillStyle = hsla(0, 0, 100, 0.8 * dark);
+      for (let i = 0; i < 40; i++) {
+        const sx = x + wob(i * 3.1) * 520, sy = y - 200 * s + wob(i * 7.7) * 260;
+        const tw = 0.5 + 0.5 * Math.sin(t * 4 + i);
+        ctx.globalAlpha = dark * tw;
+        ctx.fillRect(sx, sy, 2 * s, 2 * s);
+      }
+      ctx.globalAlpha = 1;
+      // the galaxy: falls from the sky toward the spot, shrinking and spinning faster as it collapses
+      const fall = easeIn(seg(u, 0.12, 0.62));
+      const gx = x, gy = lerp(y - 230 * s, y - 50 * s, fall);
+      const R = lerp(150, 6, fall) * s;
+      if (u < 0.66) {
+        ctx.globalCompositeOperation = "lighter";
+        glow(ctx, gx, gy, R * 1.2, R * 0.55, hsla(272, 100, 70, 0.45 * dark), hsla(272, 100, 60, 0));
+        const spin = t * (1.5 + fall * 10);
+        for (let arm = 0; arm < 2; arm++) {
+          for (let i = 0; i < 46; i++) {
+            const k = i / 45;
+            const an = spin + arm * Math.PI + k * 4.2;
+            const r = k * R;
+            const px = gx + Math.cos(an) * r, py = gy + Math.sin(an) * r * 0.42;
+            ctx.fillStyle = i % 5 === 0 ? hsla(48, 100, 86, 0.9 * dark) : hsla(272 - k * 70, 100, 80, (0.9 - k * 0.5) * dark);
+            ctx.beginPath();
+            ctx.arc(px, py, (2.6 - k * 1.4) * s, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        glow(ctx, gx, gy, 16 * s, 16 * s, hsla(0, 0, 100, dark), hsla(48, 100, 80, 0));
+        ctx.globalCompositeOperation = "source-over";
+      }
+      ctx.restore();
+    },
+  },
+
 };
 
 // ---------- hybrids ----------

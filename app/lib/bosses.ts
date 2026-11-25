@@ -4,7 +4,7 @@
 import type { BossDesign, FighterDef, Move } from "./fighters";
 import type { Form } from "./forms";
 
-export type BossId = "nullshade" | "maelstrom" | "magmaw" | "everwinter" | "riftmaker" | "hollowking" | "blacksun";
+export type BossId = "nullshade" | "maelstrom" | "magmaw" | "everwinter" | "riftmaker" | "hollowking" | "blacksun" | "axiom";
 
 const M = (m: Omit<Move, "wind" | "act" | "rec"> & Partial<Pick<Move, "wind" | "act" | "rec">>): Move => ({
   wind: 0.2,
@@ -110,6 +110,20 @@ export const BOSSES: Record<BossId, FighterDef> = {
       M({ id: "eclipse-disc", name: "Eclipse Disc", kind: "projectile", anim: "thrust", range: 620, minRange: 90, cd: 3.4, dmg: 11, speed: 460, size: 16, pierce: true, shape: "disc", status: "blind", statusDur: 1.2 }),
       M({ id: "prominence", name: "Prominence", kind: "eruption", anim: "uppercut", range: 480, minRange: 50, cd: 4.8, dmg: 13, radius: 50, lift: -720, status: "burn", statusDur: 2, wind: 0.34 }),
       M({ id: "total-eclipse", name: "Total Eclipse", kind: "burst", anim: "raise", range: 2000, cd: 14, dmg: 6, eclipse: true, status: "blind", statusDur: 4, wind: 0.55, rec: 0.3 }),
+    ],
+  },
+  // Chapter 8. The cosmos given a will: it rewrites reality more often than the Riftmaker, and its Event Horizon swallows shots whole.
+  axiom: {
+    id: "gravi", boss: "axiom", name: "The Axiom", power: "Cosmic Reality Warping", role: "control",
+    ability: "The cosmos given a will. It rewrites reality more often than the Riftmaker ever could, folds galaxies into its fists, rains stars on its enemies and its Event Horizon swallows shots whole.",
+    color: "hsl(236 55% 11%)", glow: "hsl(272 100% 80%)", hp: 480, speed: 96,
+    moves: [
+      M({ id: "galaxy-fist", name: "Galaxy Fist", kind: "melee", anim: "jab", range: 80, cd: 0.9, dmg: 10, kb: 260 }),
+      M({ id: "cosmic-rewrite", name: "Cosmic Rewrite", kind: "warp", anim: "raise", range: 2000, cd: 12, dmg: 0, wind: 0.5, rec: 0.3 }),
+      M({ id: "cosmic-string", name: "Cosmic String", kind: "beam", anim: "cast", range: 520, minRange: 70, cd: 3.2, dmg: 14, act: 0.36, kb: 220, wind: 0.3 }),
+      M({ id: "star-shower", name: "Star Shower", kind: "rain", anim: "raise", range: 560, cd: 5.5, dmg: 8, count: 8, radius: 180, size: 11, shape: "shard", wind: 0.35, rec: 0.3 }),
+      M({ id: "event-horizon", name: "Event Horizon", kind: "zone", anim: "slam", range: 400, cd: 9, dmg: 6, radius: 140, dur: 4.5, pullIn: 160, erase: true, status: "slow", statusDur: 0.6, wind: 0.35 }),
+      M({ id: "wormhole-step", name: "Wormhole Step", kind: "blink", anim: "kick", range: 540, minRange: 130, cd: 4, dmg: 12, kb: 300, lift: -320 }),
     ],
   },
 };
@@ -324,6 +338,35 @@ export const BOSS_PHASES: Partial<Record<BossDesign, Form[]>> = {
       moves: [
         M({ id: "supernova", name: "Supernova", kind: "burst", anim: "raise", range: 460, cd: 12, dmg: 15, radius: 440, kb: 420, lift: -480, status: "burn", statusDur: 3, wind: 0.55, rec: 0.35 }),
         M({ id: "endless-night", name: "Endless Night", kind: "burst", anim: "raise", range: 2000, cd: 15, dmg: 9, eclipse: true, status: "blind", statusDur: 4.5, wind: 0.55, rec: 0.3 }),
+      ],
+    },
+  ],
+  axiom: [
+    {
+      ...P2, power: "gravi", title: "NEBULA HEART", dodge: 0.12,
+      blurb: "A nebula blooms in its chest and three small worlds fall into orbit round it. It throws planets, and its nebula veil blinds whoever stands in it.",
+      body: "hsl(262 50% 16%)", glow: "hsl(300 100% 78%)", a: "hsl(290 80% 52%)", b: "hsl(200 100% 80%)",
+      moves: [
+        M({ id: "planet-toss", name: "Planet Toss", kind: "projectile", anim: "thrust", range: 620, minRange: 90, cd: 3.6, dmg: 14, speed: 380, size: 22, arc: true, shape: "rock", kb: 380, lift: -260, wind: 0.3 }),
+        M({ id: "nebula-veil", name: "Nebula Veil", kind: "zone", anim: "raise", range: 400, cd: 9, dmg: 6, radius: 160, dur: 4.5, status: "blind", statusDur: 0.6, wind: 0.35 }),
+      ],
+    },
+    {
+      ...P3, power: "gravi", title: "GALAXY CROWN", drain: 0.12,
+      blurb: "A crown of stars lights over its head and a second galaxy turns behind it. Superclusters fly in fans, and every hit it lands takes a little health back.",
+      body: "hsl(230 60% 12%)", glow: "hsl(48 100% 80%)", a: "hsl(240 80% 40%)", b: "hsl(48 100% 82%)",
+      moves: [
+        M({ id: "supercluster", name: "Supercluster", kind: "projectile", anim: "cast", range: 600, minRange: 80, cd: 3, dmg: 6, speed: 600, size: 10, count: 6, spread: 0.26, shape: "orb" }),
+        M({ id: "gravity-well", name: "Gravity Well", kind: "pull", anim: "cast", range: 500, minRange: 110, cd: 4.5, dmg: 11, status: "slow", statusDur: 1.2, wind: 0.26 }),
+      ],
+    },
+    {
+      ...P4, power: "gravi", title: "THE LAST LAW", guard: 0.78, regen: 1.3,
+      blurb: "A black hole opens behind it and its body turns to open sky. Big Bang blasts most of the arena, and Heat Death puts out every star so its enemies swing blind.",
+      body: "hsl(0 0% 3%)", glow: "hsl(0 0% 100%)", a: "hsl(272 90% 60%)", b: "hsl(48 100% 86%)", dark: "hsl(250 60% 3%)",
+      moves: [
+        M({ id: "big-bang", name: "Big Bang", kind: "burst", anim: "raise", range: 480, cd: 12, dmg: 16, radius: 440, kb: 440, lift: -460, wind: 0.55, rec: 0.35 }),
+        M({ id: "heat-death", name: "Heat Death", kind: "burst", anim: "raise", range: 2000, cd: 15, dmg: 8, eclipse: true, status: "blind", statusDur: 4, wind: 0.55, rec: 0.3 }),
       ],
     },
   ],

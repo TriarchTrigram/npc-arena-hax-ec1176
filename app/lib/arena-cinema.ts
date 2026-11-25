@@ -444,6 +444,35 @@ const MARKS: Partial<Record<Power, MarkDraw>> = {
       ctx.restore();
     }
   },
+  crys: (ctx, m, k, r) => {
+    // a cluster of small crystals left standing in the floor
+    pool(ctx, m.w, withA(m.b, 0.25 * k), withA(m.b, 0));
+    for (let i = 0; i < 6; i++) {
+      const x = (r() * 2 - 1) * m.w * 0.6, h = (6 + r() * 12) * k, w = 2.5 + r() * 2.5, lean = (r() - 0.5) * 0.8;
+      ctx.save();
+      ctx.translate(x, 0);
+      ctx.rotate(lean);
+      ctx.fillStyle = withA(i % 2 ? m.a : m.b, 0.85 * k);
+      ctx.beginPath();
+      ctx.moveTo(-w, 0); ctx.lineTo(-w, -h + w); ctx.lineTo(0, -h); ctx.lineTo(w, -h + w); ctx.lineTo(w, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  },
+  sand: (ctx, m, k, r) => {
+    // a low drift of sand with a few grains scattered round it
+    flat(ctx, () => {
+      ctx.fillStyle = withA(m.a, 0.7 * k);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, m.w * 0.6, m.w * 0.18, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    for (let i = 0; i < 12; i++) {
+      ctx.fillStyle = withA(i % 4 === 0 ? m.b : m.a, 0.8 * k);
+      ctx.fillRect((r() * 2 - 1) * m.w * 0.9, -r() * 3, 2, 2);
+    }
+  },
 };
 
 const ringMark: MarkDraw = (ctx, m, k) => {
