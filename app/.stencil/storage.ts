@@ -1,6 +1,7 @@
 import { contentDisposition } from "./files";
 import { createImage } from "./image";
 import { readCapped, safeFetch } from "./safe-fetch";
+import { forgetStoredFiles } from "./stored-files";
 
 /** How many times a momentary storage fault is retried, and the pause before
  *  each retry. Kept small so a bucket that is really down still fails fast. */
@@ -85,12 +86,10 @@ export function createStorage(env: Env, limits: UploadLimits = {}): R2Bucket {
           return (key: string, uploadId: string) =>
             boundUpload(value.call(target, `${prefix}${key}`, uploadId), target, bounds);
         case "delete":
-          return (keys: string | string[]) => {
-            const all =
-              typeof keys === "string"
-                ? `${prefix}${keys}`
-                : keys.map((k: string) => `${prefix}${k}`);
-            return value.call(target, all);
+          return async (keys: string | string[]) => {
+            const list = typeof keys === "string" ? [keys] : keys;
+            await value.call(target, list.map((k: string) => `${prefix}${k}`));
+            await forgetStoredFiles(env, list);
           };
         case "list":
           // Strip the app prefix back off returned keys so list is symmetric

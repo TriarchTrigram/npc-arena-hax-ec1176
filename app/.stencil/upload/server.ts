@@ -5,9 +5,23 @@
  */
 
 import { completeUpload, sniffImageType, UploadTooLargeError } from "../storage";
+import { recordStoredFile, storedBytesFor } from "../stored-files";
 
 /** The part size the client sends; a bigger part is refused before it is stored. */
 export const UPLOAD_PART_BYTES = 10 * 1024 * 1024;
+
+const DEFAULT_ALLOWANCE_BYTES = 5 * 1024 * 1024 * 1024;
+const ALLOWANCE_SPENT = "You've used all of your storage space here. Delete some files to upload more.";
+
+/** A total one app user may keep stored. Files this route finishes are recorded against
+ *  `owner`, and an upload that would take them past `bytes` is refused. */
+export interface UploadAllowance {
+  env: Env;
+  /** The app user the bytes count against: `user.id` from the route's own gate, never the request. */
+  owner: string;
+  /** Bytes this app user may keep stored in total. Defaults to 5 GB. */
+  bytes?: number;
+}
 
 export interface UploadIntent {
   /** The file name as the browser gave it, reduced to letters, digits, `.`, `_` and `-`. */
@@ -33,6 +47,8 @@ export interface UploadRouteOptions {
   maxBytes?: number;
   /** Types this route stores, exact (`application/pdf`) or by family (`image/*`). Omit to store any. */
   accept?: readonly string[];
+  /** Counts each finished file against one app user's stored total. `storage` must be `createStorage(env)`. */
+  allowance?: UploadAllowance;
   /** Runs once per finished file, after the size is measured and under the limit. */
   onComplete?: (file: UploadedFile) => void | Promise<void>;
 }
@@ -146,7 +162,17 @@ export async function handleUpload(
   options: UploadRouteOptions,
 ): Promise<Response> {
   if (request.method !== "POST") return refuse("Upload requests must be POST.", 405);
-  const maxParts = options.maxBytes ? Math.ceil(options.maxBytes / UPLOAD_PART_BYTES) : Infinity;
+  const allowance = options.allowance;
+  const allowed = allowance?.bytes ?? DEFAULT_ALLOWANCE_BYTES;
+  const left = allowance ? Math.max(0, allowed - (await storedBytesFor(allowance.env, allowance.owner))) : Infinity;
+  // The smaller of the file cap and what the app user has left; Infinity when the route sets neither.
+  const cap = Math.min(options.maxBytes || Infinity, left);
+  const maxBytes = cap === Infinity ? options.maxBytes : cap;
+  const tooBig = (limit: number) =>
+    left < (options.maxBytes || Infinity)
+      ? refuse(`That file doesn't fit in the ${formatBytes(limit)} of storage you have left.`, 413)
+      : refuse(`That file is over ${formatBytes(limit)}.`, 413);
+  const maxParts = Math.ceil(cap / UPLOAD_PART_BYTES);
 
   if ((request.headers.get("content-type") ?? "").includes("multipart/form-data")) {
     const form = await request.formData();
@@ -160,8 +186,9 @@ export async function handleUpload(
     if (!Number.isInteger(partNumber) || partNumber < 1) {
       return refuse("This upload request is incomplete.", 400);
     }
+    if (left === 0) return refuse(ALLOWANCE_SPENT, 413);
     if (chunk.size > UPLOAD_PART_BYTES || partNumber > maxParts) {
-      return refuse(`That file is over ${formatBytes(options.maxBytes ?? UPLOAD_PART_BYTES)}.`, 413);
+      return tooBig(cap === Infinity ? UPLOAD_PART_BYTES : cap);
     }
     const part = await storage
       .resumeMultipartUpload(key, uploadId)
@@ -190,9 +217,8 @@ export async function handleUpload(
       if (options.accept && !accepts(options.accept, type)) {
         return refuse(`That file type isn't accepted here (${describeAccepted(options.accept)}).`, 415);
       }
-      if (options.maxBytes && size > options.maxBytes) {
-        return refuse(`That file is over ${formatBytes(options.maxBytes)}.`, 413);
-      }
+      if (left === 0) return refuse(ALLOWANCE_SPENT, 413);
+      if (size > cap) return tooBig(cap);
       const key = await options.key({ name, type, size });
       const upload = await storage.createMultipartUpload(key, {
         httpMetadata: { contentType: type },
@@ -205,12 +231,18 @@ export async function handleUpload(
       }
       let size: number;
       try {
-        ({ size } = await completeUpload(storage, body.key, body.uploadId, body.parts, options.maxBytes));
+        ({ size } = await completeUpload(storage, body.key, body.uploadId, body.parts, maxBytes));
       } catch (err) {
-        if (err instanceof UploadTooLargeError) {
-          return refuse(`That file is over ${formatBytes(err.maxBytes)}.`, 413);
-        }
+        if (err instanceof UploadTooLargeError) return tooBig(err.maxBytes);
         throw err;
+      }
+      if (allowance) {
+        // Counted after the write, so uploads finishing together cannot all pass the same reading.
+        const stored = await recordStoredFile(allowance.env, { key: body.key, owner: allowance.owner, size });
+        if (stored > allowed) {
+          await storage.delete(body.key);
+          return refuse(ALLOWANCE_SPENT, 413);
+        }
       }
       const file: UploadedFile = {
         key: body.key,
@@ -234,8 +266,8 @@ export async function handleUpload(
     case "rules":
       return reply({
         accept: options.accept ?? null,
-        maxBytes: options.maxBytes ?? null,
-        hint: describeRules(options),
+        maxBytes: maxBytes ?? null,
+        hint: describeRules({ ...options, maxBytes }),
       });
     default:
       return refuse("This upload request is incomplete.", 400);

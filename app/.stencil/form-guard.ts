@@ -4,13 +4,14 @@
  */
 
 import { authConfig } from "./auth/utils";
-import { isDev } from "./context";
+import { isDev, isDraft } from "./context";
 
 const DEFAULT_MAX = 5;
 const DEFAULT_WINDOW_SECONDS = 10 * 60;
 const TOKEN_TTL_SECONDS = 24 * 60 * 60;
 // A person needs longer than this to fill a form in; a script that posts on load does not.
 const MIN_FILL_SECONDS = 2;
+const REFUSAL_DAYS_KEPT = 90;
 const NAME_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
 // The two hidden fields `<FormGuard>` renders: one no person fills, one carrying the token.
@@ -40,6 +41,7 @@ export type FormGuardResult =
 const DDL = [
   "CREATE TABLE IF NOT EXISTS `stencil_form_guard` (`scope` text PRIMARY KEY NOT NULL, `uses` integer NOT NULL, `resets_at` integer NOT NULL);",
   "CREATE INDEX IF NOT EXISTS `stencil_form_guard_resets_at` ON `stencil_form_guard` (`resets_at`);",
+  "CREATE TABLE IF NOT EXISTS `stencil_form_guard_refusal` (`day` text NOT NULL, `name` text NOT NULL, `reason` text NOT NULL, `refusals` integer NOT NULL, PRIMARY KEY (`day`, `name`, `reason`));",
 ];
 
 let ensured = false;
@@ -105,6 +107,30 @@ async function countUse(env: Env, scope: string, max: number, windowSeconds: num
   return row.uses <= max ? 0 : Math.max(1, row.resets_at - now);
 }
 
+type Refusal = Exclude<FormGuardResult, { ok: true }>;
+
+/** Return `refusal` after adding it to the day's count for `name` (UTC day, kept 90 days).
+ *  Only the Published app is counted, and only as a number: no visitor, nothing posted.
+ *  A count that cannot be written is logged and never changes the answer. */
+async function refuse(env: Env, name: string, refusal: Refusal): Promise<Refusal> {
+  if (isDraft(env)) return refusal;
+  try {
+    await ensureTable(env);
+    const now = Date.now();
+    const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM `stencil_form_guard_refusal` WHERE `day` < ?").bind(day(now - REFUSAL_DAYS_KEPT * 86_400_000)),
+      env.DB.prepare(
+        "INSERT INTO `stencil_form_guard_refusal` (`day`, `name`, `reason`, `refusals`) VALUES (?, ?, ?, 1) " +
+          "ON CONFLICT(`day`, `name`, `reason`) DO UPDATE SET `refusals` = `refusals` + 1",
+      ).bind(day(now), name, refusal.reason),
+    ]);
+  } catch (err) {
+    console.warn(`[form-guard] could not record a "${refusal.reason}" refusal for "${name}":`, err);
+  }
+  return refusal;
+}
+
 /** Count one use of `name` by the visitor behind `request` and say whether it is within the
  *  cap. Call it first, before the route stores, sends or runs anything. The visitor is the
  *  address Cloudflare saw, stored only as a keyed fingerprint. Not counted in local dev. */
@@ -117,10 +143,10 @@ export async function limitVisitor(env: Env, request: Request, options: LimitVis
     // Only cf-connecting-ip: Cloudflare sets it and strips client-supplied copies.
     const visitor = await sign(env, `visitor\n${request.headers.get("cf-connecting-ip") ?? "unknown"}`);
     const retryAfterSeconds = await countUse(env, `visitor:${options.name}:${visitor.slice(0, 32)}`, max, windowSeconds);
-    return retryAfterSeconds > 0 ? { ok: false, reason: "too_many", retryAfterSeconds } : { ok: true };
+    return retryAfterSeconds > 0 ? refuse(env, options.name, { ok: false, reason: "too_many", retryAfterSeconds }) : { ok: true };
   } catch (err) {
     console.error(`[form-guard] could not count a visitor for "${options.name}", refusing the request:`, err);
-    return { ok: false, reason: "unavailable" };
+    return refuse(env, options.name, { ok: false, reason: "unavailable" });
   }
 }
 
@@ -157,16 +183,16 @@ export async function guardForm(
 ): Promise<FormGuardResult> {
   requireName(options.name, "guardForm");
   if (isDev(env)) return { ok: true };
-  if (field(fields, TRAP_FIELD)) return { ok: false, reason: "bot" };
+  if (field(fields, TRAP_FIELD)) return refuse(env, options.name, { ok: false, reason: "bot" });
   const nonce = await tokenNonce(env, options.name, field(fields, TOKEN_FIELD));
-  if (!nonce) return { ok: false, reason: "unverified" };
+  if (!nonce) return refuse(env, options.name, { ok: false, reason: "unverified" });
   try {
     const windowSeconds = options.windowSeconds ?? DEFAULT_WINDOW_SECONDS;
     const retryAfterSeconds = await countUse(env, `token:${nonce}`, options.max ?? DEFAULT_MAX, windowSeconds);
-    if (retryAfterSeconds > 0) return { ok: false, reason: "too_many", retryAfterSeconds };
+    if (retryAfterSeconds > 0) return refuse(env, options.name, { ok: false, reason: "too_many", retryAfterSeconds });
   } catch (err) {
     console.error(`[form-guard] could not count a token for "${options.name}", refusing the request:`, err);
-    return { ok: false, reason: "unavailable" };
+    return refuse(env, options.name, { ok: false, reason: "unavailable" });
   }
   return limitVisitor(env, request, options);
 }

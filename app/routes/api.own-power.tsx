@@ -23,7 +23,9 @@ const enumOf = (xs: readonly string[]) => z.enum(xs as [string, ...string[]]);
 const clamp = (v: number, lo: number, hi: number) => Math.round(Math.max(lo, Math.min(hi, Number.isFinite(v) ? v : lo)));
 
 const Answer = z.object({
-  fits: z.boolean().describe("false only when the idea is hateful, sexual, or about hurting real people"),
+  fits: z.boolean().describe(
+    "false when the idea is hateful, sexual, or about hurting real people, or when it would make the fighter immortal, invincible, unkillable or unable to take damage",
+  ),
   name: z.string().describe("The power's name: 1 to 3 words, Title Case, at most 22 characters"),
   word: z.string().describe("One short word (at most 10 letters) that names its signature moves, e.g. Honey, Static, Ink"),
   about: z.string().describe("One plain sentence under 100 characters saying what the power does in a fight"),
@@ -46,11 +48,11 @@ const catalog = BORROWABLE.map((m) => `${m.id}: ${KIND_WORDS[m.kind]} (${DEF_BY_
 
 const SYSTEM = `You design powers for NPC Arena, a game where stick figures with elemental powers fight.
 A player typed a power idea. Turn it into an original power the game can play.
-- Never reuse a name, character, item or move from an existing game, film, comic or show. If the idea names one, design an original power inspired by the idea instead, with your own names.
 - Pick colours that look like the idea. Main colour is the body and moves, glow is the highlight.
 - Pick ${MAX_OWN_MOVES} moves. Each one plays like one move from the list below (same kind of attack), so choose the move whose kind fits what your move does. Use a mix: at least one close strike, one ranged move and one big area move. Order them from the most basic to the strongest.
 - Move names fit the idea, 1 to 3 plain words, no numbers.
 - Plain words, no em dashes, no hype, UK spelling (colour, armour).
+- Never make the power immortal, invincible, unkillable, unable to take damage, or give it infinite or endless health — whatever the idea, this fighter can always be knocked out in a fight like any other.
 
 Moves you can play like (id: what it does (element, its name in the game)):
 ${catalog}`;
@@ -67,7 +69,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   if (request.method !== "POST") return Response.json({ ok: false, code: "failed" }, { status: 405 });
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ ok: false, code: "short" }, { status: 400 });
-  const limit = await limitVisitor(env, request, { name: "own-power", max: 8, windowSeconds: 600 });
+  const limit = await limitVisitor(env, request, { name: "own-power", max: 60, windowSeconds: 600 });
   if (!limit.ok) return Response.json({ ok: false, code: "busy" }, { status: 429 });
 
   const ai = createAI(env);
