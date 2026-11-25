@@ -262,6 +262,19 @@ function bytesAt(bytes: Uint8Array, offset: number, text: string): boolean {
   return true;
 }
 
+// Storage keeps a Markdown, CSV, JSON or HTML upload as generic bytes, so its start says
+// whether it is text: valid UTF-8 with no NUL byte.
+function startsAsText(bytes: Uint8Array): boolean {
+  const head = bytes.subarray(0, 4096);
+  if (head.includes(0)) return false;
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(head, { stream: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function documentKindOf(bytes: Uint8Array, declared: string | null): DocumentKind | null {
   const type = (declared ?? "").split(";")[0].trim().toLowerCase();
   if (bytesAt(bytes, 0, "%PDF")) return "pdf";
@@ -269,6 +282,7 @@ function documentKindOf(bytes: Uint8Array, declared: string | null): DocumentKin
   if (bytesAt(bytes, 4, "ftyp") || type === "image/heic") return null;
   if (sniffImageType(bytes) || type.startsWith("image/")) return "image";
   if (type.startsWith("text/") || type === "application/json") return "text";
+  if (type === "application/octet-stream" && startsAsText(bytes)) return "text";
   return null;
 }
 

@@ -490,6 +490,30 @@ const MARKS: Partial<Record<Power, MarkDraw>> = {
       ctx.stroke();
     }
   },
+  chaos: (ctx, m, k, r) => {
+    // a skid of scorched streaks with a few glints of chaos energy still twinkling on it
+    pool(ctx, m.w, withA(m.a, 0.25 * k), withA(m.a, 0));
+    ctx.strokeStyle = withA(m.a, 0.6 * k);
+    ctx.lineWidth = 1.6;
+    for (let i = 0; i < 3; i++) {
+      const y = -1 - i * 1.5, x0 = (r() * 2 - 1) * m.w * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x0 - m.w * 0.4, y);
+      ctx.lineTo(x0 + m.w * 0.4, y);
+      ctx.stroke();
+    }
+    ctx.fillStyle = withA(m.b, 0.9 * k);
+    for (let i = 0; i < 4; i++) {
+      const x = (r() * 2 - 1) * m.w * 0.6, y = -2 - r() * 6 * k, rr = 1.6 + r() * 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x, y - rr * 2);
+      ctx.lineTo(x + rr * 0.5, y);
+      ctx.lineTo(x, y + rr * 2);
+      ctx.lineTo(x - rr * 0.5, y);
+      ctx.closePath();
+      ctx.fill();
+    }
+  },
   flora: (ctx, m, k, r) => {
     // a tuft of grass and a couple of flowers left growing where it hit
     for (let i = 0; i < 9; i++) {

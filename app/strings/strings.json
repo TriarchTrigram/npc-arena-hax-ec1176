@@ -223,7 +223,10 @@
       "awakened": "Slowly heals while fighting.",
       "mastery": "Slips some hits entirely.",
       "mystic": "Every hit drains health back.",
-      "nightmare": "Quest fighters: darker, stronger, three new moves. New-generation fighters surge instead, gaining twelve."
+      "nightmare": "Quest fighters: darker, stronger, three new moves. Can't be stunned or frozen.",
+      "surge": "New generation: twelve original moves of their own. Can't be stunned or frozen.",
+      "super": "Turbo only: seven emeralds, golden light and twelve new moves.",
+      "hyper": "Turbo only, after Super Form. Can't be stunned or frozen."
     },
     "role": {
       "attacker": "Attacker",

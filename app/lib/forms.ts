@@ -5,7 +5,7 @@
 
 import type { Move, Power } from "./fighters";
 
-export type FormKind = "rage" | "perfected" | "awakened" | "mastery" | "mystic" | "nightmare" | "phase";
+export type FormKind = "rage" | "perfected" | "awakened" | "mastery" | "mystic" | "nightmare" | "surge" | "super" | "hyper" | "phase";
 
 export type Form = {
   power: Power;
@@ -40,6 +40,9 @@ export const FORM_NAME: Record<FormKind, string> = {
   mastery: "Mastery Mode",
   mystic: "Mystic Mode",
   nightmare: "Nightmare Mode",
+  surge: "Surge Mode",
+  super: "Super Form",
+  hyper: "Hyper Form",
   phase: "Boss Phase",
 };
 
@@ -51,6 +54,9 @@ export const FORM_SHOUT: Record<FormKind, string> = {
   mastery: "MASTERY MODE",
   mystic: "MYSTIC MODE",
   nightmare: "NIGHTMARE MODE",
+  surge: "SURGE MODE",
+  super: "SUPER FORM",
+  hyper: "HYPER FORM",
   phase: "NEXT PHASE",
 };
 
@@ -343,8 +349,12 @@ FORMS.sand = {
     M({ id: "sand-sea", name: "Sand Sea", kind: "projectile", anim: "slam", range: 900, minRange: 60, cd: 6, dmg: 18, speed: 360, size: 30, pierce: true, ground: true, shape: "wave", kb: 420, lift: -320, status: "blind", statusDur: 1, wind: 0.4, rec: 0.35 }),
   ],
 };
+// ----- Surge Mode: the new generation's own form -----
+// Built like Nightmare Mode (the same passives, and it can't be stunned or frozen) but it carries 12 original moves of its own.
+const SURGE = NIGHTMARE;
+
 FORMS.plasma = {
-  power: "plasma", kind: "nightmare", title: "SUPERNOVA", label: "Surge Mode", ...NIGHTMARE,
+  power: "plasma", kind: "surge", title: "SUPERNOVA", ...SURGE,
   blurb: "Volta stops holding back. The plasma burns white and violet, a corona flares off every limb and each star thrown collapses into a nova.",
   body: "hsl(280 40% 10%)", glow: "hsl(0 0% 100%)", a: "hsl(285 100% 62%)", b: "hsl(190 100% 80%)", dark: "hsl(270 60% 3%)",
   dmg: 1.35, kb: 1.25, cd: 0.7, speed: 1.25, act: 1.2,
@@ -364,7 +374,7 @@ FORMS.plasma = {
   ],
 };
 FORMS.flora = {
-  power: "flora", kind: "nightmare", title: "WILD OVERGROWTH", label: "Surge Mode", ...NIGHTMARE,
+  power: "flora", kind: "surge", title: "WILD OVERGROWTH", ...SURGE,
   blurb: "The leaves turn black and the flowers bleed red. The floor splits under a forest of thorns, and nothing caught in it gets out.",
   body: "hsl(140 30% 8%)", glow: "hsl(350 100% 58%)", a: "hsl(140 40% 22%)", b: "hsl(350 100% 66%)", dark: "hsl(140 40% 3%)",
   dmg: 1.3, kb: 1.2, cd: 0.7, speed: 1.2, act: 1.2,
@@ -396,5 +406,42 @@ export const PERFECTED_FLAME: Form = {
   ],
 };
 
+// ----- Turbo: Super Form, then Hyper Form -----
+// Seven emeralds circle him and crash into him in a golden light; pushed further, a great emerald flashes, the seven turn
+// into super emeralds and crash into him again in white and every colour at once (both cutscenes are in the arena engine).
+FORMS.chaos = {
+  power: "chaos", kind: "super", title: "SEVEN EMERALDS", at: 0.45, regen: 1.6, dodge: 0.15,
+  blurb: "Seven emeralds circle him, spin faster and faster and crash into him in a burst of golden light. His jacket and hair turn gold and he barely touches the ground.",
+  body: "hsl(48 100% 58%)", glow: "hsl(52 100% 80%)", a: "hsl(46 100% 56%)", b: "hsl(54 100% 82%)",
+  dmg: 1.35, kb: 1.2, cd: 0.72, speed: 1.3, act: 1.2,
+  moves: [
+    M({ id: "golden-fist", name: "Golden Fist", kind: "melee", anim: "uppercut", range: 90, cd: 1, dmg: 17, kb: 360, lift: -340 }),
+    M({ id: "gold-rush", name: "Gold Rush", kind: "dash", anim: "lunge", range: 480, cd: 3.2, dmg: 17, dist: 480, act: 0.2, kb: 420, lift: -220 }),
+    M({ id: "chaos-lance", name: "Chaos Lance", kind: "beam", anim: "thrust", range: 760, minRange: 70, cd: 4, dmg: 20, act: 0.36, kb: 380, wind: 0.34 }),
+    M({ id: "emerald-volley", name: "Emerald Volley", kind: "projectile", anim: "cast", range: 620, minRange: 80, cd: 2.4, dmg: 6, speed: 820, size: 10, count: 7, spread: 0.2, shape: "shard" }),
+    M({ id: "radiant-spin", name: "Radiant Spin", kind: "burst", anim: "spin", range: 170, cd: 5.5, dmg: 18, radius: 200, kb: 540, lift: -360, wind: 0.3 }),
+    M({ id: "chaos-rain", name: "Chaos Rain", kind: "rain", anim: "raise", range: 580, cd: 6, dmg: 9, count: 9, radius: 190, shape: "shard", wind: 0.34, rec: 0.3 }),
+    M({ id: "still-field", name: "Still Field", kind: "zone", anim: "raise", range: 400, cd: 9, dmg: 6, radius: 150, dur: 3.5, status: "stun", statusDur: 0.4, wind: 0.34 }),
+    M({ id: "gilded-pull", name: "Gilded Pull", kind: "pull", anim: "cast", range: 520, minRange: 110, cd: 3.6, dmg: 11, status: "stun", statusDur: 0.35 }),
+    M({ id: "flash-step", name: "Flash Step", kind: "blink", anim: "uppercut", range: 680, minRange: 100, cd: 3.2, dmg: 16, lift: -580, kb: 240 }),
+    M({ id: "chaos-pillar", name: "Chaos Pillar", kind: "eruption", anim: "slam", range: 560, minRange: 40, cd: 5.4, dmg: 16, radius: 46, count: 3, lift: -680, wind: 0.34 }),
+    M({ id: "golden-comet", name: "Golden Comet", kind: "projectile", anim: "raise", range: 760, minRange: 90, cd: 6, dmg: 22, speed: 460, size: 26, shape: "orb", pierce: true, kb: 500, wind: 0.4 }),
+    M({ id: "emerald-mend", name: "Emerald Mend", kind: "heal", anim: "raise", range: 2000, cd: 13, dmg: 0, heal: 26, below: 0.5, wind: 0.36, rec: 0.3 }),
+  ],
+};
+
+/** Turbo's second step: past Super Form into Hyper Form. Stronger and faster again, and it can't be stunned or frozen. */
+export const HYPER_FORM: Form = {
+  power: "chaos", kind: "hyper", title: "SUPER EMERALDS", at: 0.2, regen: 2.4, dodge: 0.25, guard: 0.85,
+  blurb: "A great emerald flashes, the seven turn into super emeralds and crash into him in white and every colour at once. He shimmers through the whole rainbow and nothing can stop him moving.",
+  body: "hsl(0 0% 96%)", glow: "hsl(0 0% 100%)", a: "hsl(190 100% 72%)", b: "hsl(310 100% 80%)",
+  dmg: 1.7, kb: 1.35, cd: 0.55, speed: 1.45, act: 1.35,
+  moves: [
+    M({ id: "hyper-dash", name: "Hyper Dash", kind: "dash", anim: "lunge", range: 560, cd: 3, dmg: 20, dist: 560, act: 0.2, kb: 480, lift: -260 }),
+    M({ id: "prism-nova", name: "Prism Nova", kind: "burst", anim: "raise", range: 200, cd: 7, dmg: 24, radius: 250, kb: 620, lift: -420, wind: 0.42, rec: 0.35 }),
+    M({ id: "chromatic-lance", name: "Chromatic Lance", kind: "beam", anim: "thrust", range: 900, minRange: 70, cd: 4.6, dmg: 24, act: 0.4, kb: 440, status: "stun", statusDur: 0.3, wind: 0.38 }),
+  ],
+};
+
 /** Every form a power has, in the order they come. */
-export const formsOf = (p: Power): Form[] => (p === "pyro" ? [FORMS.pyro, PERFECTED_FLAME] : [FORMS[p]]);
+export const formsOf = (p: Power): Form[] => (p === "pyro" ? [FORMS.pyro, PERFECTED_FLAME] : p === "chaos" ? [FORMS.chaos, HYPER_FORM] : [FORMS[p]]);

@@ -256,7 +256,7 @@ const FORM_LOOKS: Record<string, Look> = {
 };
 // ---------- quest fighters ----------
 // Parallax (space), Hexizon (indie games), Halflife (gamma), Redline (speed), Liminal (portals and matter), Overtone (sound), Vellum (paper),
-// Facet (crystal), Sirocco (sand), and the new generation: Volta (plasma) and Briar (plants).
+// Facet (crystal), Sirocco (sand), and the new generation: Volta (plasma), Briar (plants) and Turbo (chaos energy).
 // Their signature moves have hand-drawn looks of their own (Spatial Cut, Spatial Prison, Gaster Blaster, Bone Barrage, Bone Zone, Jumbo Roundabout,
 // Blaster Storm, Gamma Ray, Mach Rush, Ring Gate, Power Chord, Staccato, Wall of Sound, Crane Flock, Shuriken Fold, Scroll Unfurl);
 // the rest borrow a signature (`sig`) drawn in their own colours, like the form moves.
@@ -451,6 +451,32 @@ const QUEST_LOOKS: Record<string, Look> = {
   "toxic-canopy": F("light-lances", "hsl(140 30% 12%)", "hsl(350 100% 60%)", "petal", false, 150, "fizz"),
   "deadfall-pull": F("magnet-pull", "hsl(140 35% 18%)", "hsl(350 100% 62%)", "leaf", false, 0, "implode"),
   "bloodroot-bloom": F("mend", "hsl(350 100% 40%)", "hsl(140 40% 30%)", "leaf", false, -120),
+  // Turbo (new generation)
+  "turbo-jab": F("shock-knuckle", "hsl(218 90% 58%)", "hsl(28 100% 66%)", "star", true, 0, "starburst"),
+  "spin-kick": F("gale-kick", "hsl(218 90% 56%)", "hsl(28 100% 64%)", "spark", true, -40, "swirl"),
+  "chaos-bolt": F("ball-lightning", "hsl(200 100% 62%)", "hsl(0 0% 100%)", "star", true, 0, "starburst"),
+  "chaos-javelin": F("ice-shard-volley", "hsl(210 100% 64%)", "hsl(48 100% 80%)", "star", true, 0, "flare"),
+  "boost-dash": F("mach-rush", "hsl(218 95% 56%)", "hsl(28 100% 64%)", "spark", true, 0, "slash"),
+  "blur-step": F("warp-kick", "hsl(210 100% 62%)", "hsl(0 0% 100%)", "star", true, 0, "swirl"),
+  "chaos-burst": F("rift-burst", "hsl(218 95% 60%)", "hsl(48 100% 82%)", "star", true, 0, "starburst"),
+  "second-wind": F("mend", "hsl(200 100% 66%)", "hsl(28 100% 74%)", "star", true, -120),
+  // Turbo, Super Form (SEVEN EMERALDS)
+  "golden-fist": F("iron-fist", "hsl(46 100% 56%)", "hsl(0 0% 100%)", "star", true, 0, "starburst"),
+  "gold-rush": F("mach-rush", "hsl(46 100% 56%)", "hsl(54 100% 84%)", "spark", true, 0, "slash"),
+  "chaos-lance": F("prism-beam", "hsl(48 100% 60%)", "hsl(0 0% 100%)", "star", true, 0, "flare"),
+  "emerald-volley": F("ice-shard-volley", "hsl(140 85% 50%)", "hsl(54 100% 84%)", "star", true, 0, "starburst"),
+  "radiant-spin": F("rift-burst", "hsl(46 100% 58%)", "hsl(0 0% 100%)", "star", true, 0, "starburst"),
+  "chaos-rain": F("light-lances", "hsl(48 100% 62%)", "hsl(0 0% 100%)", "star", true, 100, "flare"),
+  "still-field": F("storm-call", "hsl(200 100% 66%)", "hsl(50 100% 80%)", "star", true, 0, "swirl"),
+  "gilded-pull": F("magnet-pull", "hsl(46 100% 54%)", "hsl(54 100% 84%)", "star", true, 0, "implode"),
+  "flash-step": F("shadow-step", "hsl(50 100% 64%)", "hsl(0 0% 100%)", "star", true, -60, "starburst"),
+  "chaos-pillar": F("flame-pillar", "hsl(46 100% 56%)", "hsl(0 0% 100%)", "star", true, -300, "flare"),
+  "golden-comet": F("fireball", "hsl(46 100% 60%)", "hsl(0 0% 100%)", "star", true, -80, "starburst"),
+  "emerald-mend": F("mend", "hsl(140 85% 56%)", "hsl(54 100% 84%)", "star", true, -120),
+  // Turbo, Hyper Form (SUPER EMERALDS)
+  "hyper-dash": F("mach-rush", "hsl(0 0% 96%)", "hsl(190 100% 76%)", "star", true, 0, "slash"),
+  "prism-nova": F("total-eclipse", "hsl(310 100% 76%)", "hsl(0 0% 100%)", "star", true, 0, "starburst"),
+  "chromatic-lance": F("prism-beam", "hsl(190 100% 74%)", "hsl(310 100% 84%)", "star", true, 0, "flare"),
   // The Axiom, cosmic reality warping (a Story boss, kept here because every one of its moves borrows a signature)
   "galaxy-fist": F("mind-jab", "hsl(260 70% 40%)", "hsl(272 100% 84%)", "star", true, 0, "starburst"),
   "cosmic-rewrite": F("reality-warp", "hsl(272 100% 62%)", "hsl(48 100% 84%)", "star", true, 0),

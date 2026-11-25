@@ -112,10 +112,11 @@ export function createEmail(env: Env) {
 
     /** Fetch one attachment's bytes, server-side, through the platform binding.
      *  `index` is the attachment's position in the received message's attachments.
-     *  Returns the raw `Response` (Content-Type / Content-Disposition set) so you
-     *  can re-serve it from your own route — attachments are never publicly
-     *  reachable, so this is the only way to hand one to an end user. Example: a
-     *  resource route that streams it back with `return new Response(res.body, res)`. */
+     *  Returns the platform's `Response`: the type is already pinned to what may
+     *  render inline (anything else is generic bytes), with nosniff and a download
+     *  disposition. Re-serve it from your own route with
+     *  `untrustedFileResponse(res.body, res.headers.get("Content-Type"), …)` from
+     *  `~stencil/storage` — never rebuild the headers by hand. */
     async getAttachment(id: string, index: number): Promise<Response> {
       const res = await backendFetch(
         `${BACKEND_BASE}/email/inbound/${encodeURIComponent(id)}/attachments/${index}`,

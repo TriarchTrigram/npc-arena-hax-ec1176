@@ -269,6 +269,12 @@ const CAST: Record<Power, Voice> = {
     s.fm((v === 1 ? 880 : v === 2 ? 1046 : 784) * p, 1.5, 4, 0.3 * len, 0.12, 0.14 * len);
     s.tone(120 * p, 90 * p, 0.3 * len, 0.12, { type: "square", attack: 0.02 });
   },
+  // Turbo: a whoosh of speed, then a bright shimmering chime of chaos energy
+  chaos: (s, p, len, v) => {
+    s.noise(1200 * p, 5200 * p, 0.16 * len, 0.3, { type: "bandpass", q: 1.6 });
+    s.fm((v === 1 ? 1175 : v === 2 ? 1318 : 1046) * p, 2, 2.5, 0.3 * len, 0.12, 0.08 * len);
+    s.tone(520 * p, 1560 * p, 0.12 * len, 0.08, { type: "triangle", delay: 0.06 * len });
+  },
   // Briar: a creak of growing wood and a rustle of leaves, with a soft green chime on top
   flora: (s, p, len, v) => {
     s.tone(140 * p, 240 * p, 0.3 * len, 0.14, { type: "triangle", vib: [6, 8] });
@@ -356,6 +362,12 @@ const IMPACT: Record<Power, Voice> = {
     s.noise(5000, 1500, 0.1, 0.55, { type: "bandpass", q: 2 });
     s.tone(220 * p, 70, 0.12, 0.35, { type: "square" });
     s.noise(8000, 6000, 0.18, 0.2, { type: "highpass", delay: 0.04 });
+  },
+  // a sharp punch and a ringing glassy ping
+  chaos: (s, p) => {
+    s.noise(3200, 1200, 0.1, 0.5, { type: "bandpass", q: 1.8 });
+    s.tone(260 * p, 90, 0.1, 0.35, { type: "square" });
+    s.fm(1568 * p, 3, 1.5, 0.22, 0.12, 0.03);
   },
   // a woody thwack and a shake of leaves
   flora: (s, p) => {

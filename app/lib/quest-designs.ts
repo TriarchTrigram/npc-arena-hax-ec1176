@@ -12,6 +12,8 @@
 // Sirocco: a wrapped hood and face band with glowing eyes, a scarf that frays into sand, sand pouring from one hand and rings of sand round the legs.
 // Volta (new generation): a mane of plasma swept back, goggles pushed up, big young eyes, a star on the chest and crackling plasma fists.
 // Briar (new generation): a crown of leaves with a flower behind one ear, big young eyes, vines up the limbs and a cape of leaves.
+// Turbo (new generation): swept-back hair, a blue jacket over a white hoodie with the hood down, and a long orange scarf that sways
+// behind him and streams flat when he runs. Super Form turns the jacket and hair gold, Hyper Form pale and shimmering.
 import type { Power } from "./fighters";
 import { drawCrane } from "./move-looks";
 import type { BossRig } from "./boss-designs";
@@ -1136,6 +1138,209 @@ function briarFront(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: 
   ctx.restore();
 }
 
+// ---------- Turbo (new generation) ----------
+
+const SCARF = "hsl(28 100% 56%)";
+const SCARF_DARK = "hsl(18 95% 42%)";
+
+/** The long scarf trailing from the neck: sways at rest, streams out flat behind him the faster he runs. */
+function turboScarf(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: number, t: number, alive: boolean, vx: number) {
+  const back = -face;
+  const speed = Math.min(1, Math.abs(vx) / 320);
+  const n = 12;
+  const pts: Pt[] = [];
+  let x = r.neck.x + back * 2 * s, y = r.neck.y + 2 * s;
+  pts.push({ x, y });
+  for (let i = 1; i <= n; i++) {
+    const k = i / n;
+    const wave = alive ? Math.sin(t * (6 + speed * 8) - i * 0.75) * (2.2 + 3.5 * k) * s : 0;
+    // at rest it hangs back and down; running it lifts out flat
+    const dx = back * 6.2 * s * (alive ? 0.55 + 0.45 * speed : 0.25);
+    const dy = (alive ? 3.2 * (1 - speed * 0.85) : 5.5) * s;
+    x += dx;
+    y += dy + wave * 0.35;
+    pts.push({ x, y: y + wave });
+  }
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  // two strands, the far one darker, tapering toward the end
+  for (const [col, off, w] of [[SCARF_DARK, 3, 5.5], [SCARF, 0, 6.5]] as const) {
+    for (let i = 1; i < pts.length; i++) {
+      const k = i / pts.length;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = w * s * (1 - k * 0.45);
+      ctx.beginPath();
+      ctx.moveTo(pts[i - 1].x, pts[i - 1].y + off * s * k);
+      ctx.lineTo(pts[i].x, pts[i].y + off * s * k);
+      ctx.stroke();
+    }
+  }
+  // the frayed end
+  const end = pts[pts.length - 1];
+  ctx.strokeStyle = SCARF;
+  ctx.lineWidth = 1.2 * s;
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(end.x, end.y + (i - 1.5) * 1.6 * s);
+    ctx.lineTo(end.x + back * 5 * s, end.y + (i - 1.5) * 2.4 * s + (alive ? Math.sin(t * 10 + i) * 1.5 * s : 2 * s));
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function turboBack(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: number, t: number, alive: boolean, p: QuestPaint, vx: number) {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const h = r.head;
+  const back = -face;
+  // the white hood, down, bunched behind the neck
+  ctx.fillStyle = "hsl(220 20% 94%)";
+  ctx.strokeStyle = "hsl(220 15% 70%)";
+  ctx.lineWidth = 1.2 * s;
+  ctx.beginPath();
+  ctx.ellipse(r.neck.x + back * 6 * s, r.neck.y - 1 * s, 8 * s, 6 * s, back * 0.4, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  turboScarf(ctx, r, s, face, t, alive, vx);
+  // swept-back hair: long spikes off the back of the head, lifting with speed
+  const lift = Math.min(1, Math.abs(vx) / 320) * 0.25;
+  ctx.fillStyle = p.a;
+  ctx.strokeStyle = "hsl(225 50% 16%)";
+  ctx.lineWidth = 1.2 * s;
+  for (const [a, len, w] of [[-0.55, 20, 6], [-0.15, 24, 6.5], [0.25, 19, 5.5]] as const) {
+    const ang = (back > 0 ? a - lift : Math.PI - a + lift) + (alive ? Math.sin(t * 7 + a * 5) * 0.05 : 0.3);
+    const bx = h.x + back * 5 * s, by = h.y - 3 * s;
+    const tx = bx + Math.cos(ang) * len * s, ty = by + Math.sin(ang) * len * s;
+    const nx = -Math.sin(ang) * w * s, ny = Math.cos(ang) * w * s;
+    ctx.beginPath();
+    ctx.moveTo(bx + nx, by + ny);
+    ctx.quadraticCurveTo((bx + tx) / 2 + nx * 0.4, (by + ty) / 2 + ny * 0.4 + 2 * s, tx, ty);
+    ctx.quadraticCurveTo((bx + tx) / 2 - nx * 0.4, (by + ty) / 2 - ny * 0.4, bx - nx, by - ny);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  // the back sleeve of the jacket
+  ctx.strokeStyle = p.a;
+  ctx.lineWidth = 7 * s;
+  strokePath(ctx, [r.shoulder, r.eB]);
+  ctx.restore();
+}
+
+function turboFront(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: number, t: number, alive: boolean, p: QuestPaint) {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const h = r.head;
+  const trim = "hsl(225 50% 16%)";
+  // the jacket over the torso: a wide panel from the shoulders to just above the hips
+  const dx = r.neck.x - r.hip.x, dy = r.neck.y - r.hip.y, len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len, ny = dx / len;
+  const top = { x: r.neck.x + (r.hip.x - r.neck.x) * 0.04, y: r.neck.y + (r.hip.y - r.neck.y) * 0.04 };
+  const bot = { x: r.hip.x + dx * 0.02, y: r.hip.y + dy * 0.02 };
+  const wTop = 8.5 * s, wBot = 7.5 * s;
+  ctx.fillStyle = p.a;
+  ctx.strokeStyle = trim;
+  ctx.lineWidth = 1.4 * s;
+  ctx.beginPath();
+  ctx.moveTo(top.x + nx * wTop, top.y + ny * wTop);
+  ctx.lineTo(bot.x + nx * wBot, bot.y + ny * wBot);
+  ctx.lineTo(bot.x - nx * wBot, bot.y - ny * wBot);
+  ctx.lineTo(top.x - nx * wTop, top.y - ny * wTop);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // the open front: the white hoodie showing down the middle, with its two drawstrings
+  const fx = face * 1.5 * s;
+  ctx.fillStyle = "hsl(220 20% 95%)";
+  ctx.beginPath();
+  ctx.moveTo(top.x + fx + nx * 3 * s, top.y + ny * 3 * s);
+  ctx.lineTo(bot.x + fx + nx * 2.2 * s, bot.y + ny * 2.2 * s);
+  ctx.lineTo(bot.x + fx - nx * 2.2 * s, bot.y - ny * 2.2 * s);
+  ctx.lineTo(top.x + fx - nx * 3 * s, top.y - ny * 3 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "hsl(220 15% 62%)";
+  ctx.lineWidth = 1 * s;
+  for (const side of [-1, 1]) {
+    const sx = top.x + fx + nx * side * 1.5 * s, sy = top.y + ny * side * 1.5 * s + 3 * s;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + (alive ? Math.sin(t * 6 + side) * 1 * s : 0), sy + 9 * s);
+    ctx.stroke();
+  }
+  // a white stripe down each side of the jacket
+  ctx.strokeStyle = "hsl(0 0% 100%)";
+  ctx.lineWidth = 1.4 * s;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(top.x + nx * side * 6.5 * s, top.y + ny * side * 6.5 * s);
+    ctx.lineTo(bot.x + nx * side * 5.8 * s, bot.y + ny * side * 5.8 * s);
+    ctx.stroke();
+  }
+  // the front sleeve, with a white cuff
+  ctx.strokeStyle = p.a;
+  ctx.lineWidth = 7 * s;
+  strokePath(ctx, [r.shoulder, r.eF, { x: r.eF.x + (r.hF.x - r.eF.x) * 0.6, y: r.eF.y + (r.hF.y - r.eF.y) * 0.6 }]);
+  ctx.strokeStyle = "hsl(220 20% 95%)";
+  ctx.lineWidth = 7.5 * s;
+  const cx0 = r.eF.x + (r.hF.x - r.eF.x) * 0.6, cy0 = r.eF.y + (r.hF.y - r.eF.y) * 0.6;
+  ctx.beginPath();
+  ctx.moveTo(cx0, cy0);
+  ctx.lineTo(cx0 + (r.hF.x - r.eF.x) * 0.12, cy0 + (r.hF.y - r.eF.y) * 0.12);
+  ctx.stroke();
+  // the scarf wrapped round the neck, with its knot at the front
+  ctx.strokeStyle = SCARF;
+  ctx.lineWidth = 6 * s;
+  ctx.beginPath();
+  ctx.moveTo(r.neck.x - face * 6 * s, r.neck.y + 1 * s);
+  ctx.lineTo(r.neck.x + face * 6 * s, r.neck.y + 1 * s);
+  ctx.stroke();
+  ctx.fillStyle = SCARF_DARK;
+  ctx.beginPath();
+  ctx.arc(r.neck.x + face * 5 * s, r.neck.y + 2 * s, 3 * s, 0, TAU);
+  ctx.fill();
+  // a fringe of hair over the brow
+  ctx.fillStyle = p.a;
+  ctx.strokeStyle = trim;
+  ctx.lineWidth = 1.1 * s;
+  ctx.beginPath();
+  ctx.moveTo(h.x - face * 9 * s, h.y - 5 * s);
+  ctx.quadraticCurveTo(h.x, h.y - 15 * s, h.x + face * 11 * s, h.y - 6 * s);
+  ctx.lineTo(h.x + face * 6 * s, h.y - 4.5 * s);
+  ctx.lineTo(h.x + face * 4 * s, h.y - 1.5 * s);
+  ctx.lineTo(h.x + face * 1 * s, h.y - 5 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // big young eyes, narrowed a little with confidence
+  if (alive) {
+    for (const ex0 of [2, 6.5]) {
+      const ex = h.x + face * ex0 * s, ey = h.y + 0.8 * s;
+      ctx.fillStyle = "hsl(0 0% 100%)";
+      ctx.beginPath();
+      ctx.ellipse(ex, ey, 1.9 * s, 2.3 * s, 0, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = p.nightmare ? p.b : "hsl(205 90% 36%)";
+      ctx.beginPath();
+      ctx.arc(ex + face * 0.5 * s, ey + 0.3 * s, 1.2 * s, 0, TAU);
+      ctx.fill();
+    }
+    // a slanted brow over each eye
+    ctx.strokeStyle = trim;
+    ctx.lineWidth = 1.1 * s;
+    ctx.beginPath();
+    ctx.moveTo(h.x + face * 0.4 * s, h.y - 2.4 * s);
+    ctx.lineTo(h.x + face * 3.6 * s, h.y - 1.6 * s);
+    ctx.moveTo(h.x + face * 5 * s, h.y - 1.6 * s);
+    ctx.lineTo(h.x + face * 8.2 * s, h.y - 2.6 * s);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 export function drawQuestDesign(
   ctx: CanvasRenderingContext2D, id: Power, layer: "back" | "front", r: BossRig, s: number, face: number, t: number,
   alive: boolean, act: QuestAct | undefined, p: QuestPaint, vx = 0,
@@ -1151,4 +1356,5 @@ export function drawQuestDesign(
   if (id === "sand") return layer === "back" ? siroccoBack(ctx, r, s, face, t, alive, act, p) : siroccoFront(ctx, r, s, face, t, alive, p);
   if (id === "plasma") return layer === "back" ? voltaBack(ctx, r, s, face, t, alive, act, p) : voltaFront(ctx, r, s, face, t, alive, p);
   if (id === "flora") return layer === "back" ? briarBack(ctx, r, s, face, t, alive, act, p) : briarFront(ctx, r, s, face, t, alive, p);
+  if (id === "chaos") return layer === "back" ? turboBack(ctx, r, s, face, t, alive, p, vx) : turboFront(ctx, r, s, face, t, alive, p);
 }

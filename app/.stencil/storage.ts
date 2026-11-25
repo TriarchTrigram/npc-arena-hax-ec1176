@@ -64,15 +64,22 @@ export function createStorage(env: Env, limits: UploadLimits = {}): R2Bucket {
 
       switch (prop) {
         case "put":
-          return (key: string, body: Parameters<R2Bucket["put"]>[1], options?: R2PutOptions) =>
-            putWithRetry(target, `${prefix}${key}`, body, options);
+          return async (
+            key: string,
+            body: Parameters<R2Bucket["put"]>[1],
+            options?: R2PutOptions,
+          ) => putWithRetry(target, `${prefix}${key}`, body, await pinUploadType(body, options));
         case "get":
         case "head":
-          return (key: string, ...args: unknown[]) =>
-            value.call(target, `${prefix}${key}`, ...args);
-        case "createMultipartUpload":
           return async (key: string, ...args: unknown[]) =>
-            boundUpload(await value.call(target, `${prefix}${key}`, ...args), target, bounds);
+            pinStoredType(await value.call(target, `${prefix}${key}`, ...args));
+        case "createMultipartUpload":
+          return async (key: string, options?: R2MultipartOptions) =>
+            boundUpload(
+              await value.call(target, `${prefix}${key}`, pinDeclaredType(options)),
+              target,
+              bounds,
+            );
         case "resumeMultipartUpload":
           return (key: string, uploadId: string) =>
             boundUpload(value.call(target, `${prefix}${key}`, uploadId), target, bounds);
@@ -227,6 +234,117 @@ const INLINE_SAFE_CONTENT_TYPES = new Set([
   "video/quicktime",
   "text/vtt",
 ]);
+
+const GENERIC_BYTES = "application/octet-stream";
+
+function baseType(type: string | null | undefined): string {
+  return (type ?? "").split(";")[0].trim().toLowerCase();
+}
+
+/** The type an untrusted file may be served under: itself when the allow-list
+ *  renders it inline, otherwise generic bytes, which every browser downloads. */
+function pinnedContentType(type: string | null | undefined): string {
+  const base = baseType(type);
+  return INLINE_SAFE_CONTENT_TYPES.has(base) ? base : GENERIC_BYTES;
+}
+
+// Leading bytes of the inline-safe picture and document types. A file that
+// claims one of these and does not start with it is not that type.
+const BYTE_SIGNATURES: Record<string, Array<Array<number | null>>> = {
+  "image/png": [[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]],
+  "image/jpeg": [[0xff, 0xd8, 0xff]],
+  "image/gif": [[0x47, 0x49, 0x46, 0x38]],
+  "image/webp": [[0x52, 0x49, 0x46, 0x46, null, null, null, null, 0x57, 0x45, 0x42, 0x50]],
+  "image/avif": [[null, null, null, null, 0x66, 0x74, 0x79, 0x70]],
+  "application/pdf": [[0x25, 0x50, 0x44, 0x46]],
+};
+
+// Markup a browser would run as a page if a route ever reflected or guessed its type.
+const MARKUP_START = /^(?:\uFEFF|\s)*<(?:\?xml|svg|!doctype|html|script)/i;
+
+function hasSignature(head: Uint8Array, signatures: Array<Array<number | null>>): boolean {
+  return signatures.some(
+    (sig) =>
+      head.length >= sig.length && sig.every((byte, i) => byte === null || head[i] === byte),
+  );
+}
+
+async function leadingBytes(body: Parameters<R2Bucket["put"]>[1]): Promise<Uint8Array | null> {
+  if (body === null || body instanceof ReadableStream) return null;
+  if (typeof body === "string") return new TextEncoder().encode(body.slice(0, 64));
+  if (body instanceof Blob) return new Uint8Array(await body.slice(0, 64).arrayBuffer());
+  if (body instanceof ArrayBuffer) return new Uint8Array(body, 0, Math.min(64, body.byteLength));
+  return new Uint8Array(body.buffer, body.byteOffset, Math.min(64, body.byteLength));
+}
+
+function withContentType<T extends { httpMetadata?: R2PutOptions["httpMetadata"] }>(
+  options: T | undefined,
+  contentType: string,
+): T {
+  const meta = options?.httpMetadata;
+  if (meta instanceof Headers) {
+    const headers = new Headers(meta);
+    headers.set("Content-Type", contentType);
+    return { ...options, httpMetadata: headers } as T;
+  }
+  return { ...options, httpMetadata: { ...meta, contentType } } as T;
+}
+
+function declaredType(options: { httpMetadata?: R2PutOptions["httpMetadata"] } | undefined) {
+  const meta = options?.httpMetadata;
+  return baseType(meta instanceof Headers ? meta.get("Content-Type") : meta?.contentType);
+}
+
+/** The declared type is stored only when the allow-list could render it inline;
+ *  HTML, SVG, XML and every other type are stored as generic bytes. */
+function pinDeclaredType<T extends { httpMetadata?: R2PutOptions["httpMetadata"] }>(
+  options: T | undefined,
+): T | undefined {
+  const declared = declaredType(options);
+  if (!declared || pinnedContentType(declared) === declared) return options;
+  return withContentType(options, GENERIC_BYTES);
+}
+
+// A buffered body is also checked against its claimed type's signature, so a web
+// page uploaded as "image/png" is stored as generic bytes. A stream cannot be
+// peeked without consuming it, so it keeps whatever `pinDeclaredType` allows.
+async function pinUploadType(
+  body: Parameters<R2Bucket["put"]>[1],
+  options: R2PutOptions | undefined,
+): Promise<R2PutOptions | undefined> {
+  const pinned = pinDeclaredType(options);
+  const declared = declaredType(pinned);
+  if (!declared || declared === GENERIC_BYTES) return pinned;
+  const head = await leadingBytes(body);
+  if (!head) return pinned;
+  const signatures = BYTE_SIGNATURES[declared];
+  const mismatch = signatures ? !hasSignature(head, signatures) : false;
+  const markup = MARKUP_START.test(new TextDecoder("latin1").decode(head));
+  return mismatch || markup ? withContentType(pinned, GENERIC_BYTES) : pinned;
+}
+
+// A stored object may still carry a page type. A read reports the pinned type,
+// so a route that copies it into its own response sends a download; the object
+// in storage is left as it is.
+function pinStoredType<T extends R2Object | null>(obj: T): T {
+  const stored = obj?.httpMetadata?.contentType;
+  if (!obj || !stored) return obj;
+  const contentType = pinnedContentType(stored);
+  if (contentType === baseType(stored)) return obj;
+  return new Proxy(obj, {
+    get(target, prop) {
+      if (prop === "httpMetadata") return { ...target.httpMetadata, contentType };
+      if (prop === "writeHttpMetadata") {
+        return (headers: Headers) => {
+          target.writeHttpMetadata(headers);
+          headers.set("Content-Type", contentType);
+        };
+      }
+      const value = Reflect.get(target, prop, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
 
 /** The key of a video's caption file: the video's own key plus `.vtt`, so the
  *  pair can never drift apart. A `captions` media job writes exactly this key,
@@ -577,15 +695,38 @@ export async function deleteStoredFiles(
 function safeServingHeaders(obj: R2Object): Headers {
   const headers = new Headers();
   obj.writeHttpMetadata(headers);
-  const base = (obj.httpMetadata?.contentType ?? "")
-    .split(";")[0]
-    .trim()
-    .toLowerCase();
-  const inline = INLINE_SAFE_CONTENT_TYPES.has(base);
-  headers.set("Content-Type", inline ? base : "application/octet-stream");
-  headers.set("Content-Disposition", inline ? "inline" : "attachment");
+  const contentType = pinnedContentType(obj.httpMetadata?.contentType);
+  headers.set("Content-Type", contentType);
+  headers.set("Content-Disposition", contentType === GENERIC_BYTES ? "attachment" : "inline");
   headers.set("X-Content-Type-Options", "nosniff");
   return headers;
+}
+
+/**
+ * Serve bytes whose type someone else chose — an email attachment, a file
+ * proxied from another store, anything not read with `serveR2Object` — under
+ * the same rules it applies: the type is pinned to the inline-safe allow-list,
+ * everything else downloads as generic bytes, and type guessing is off. Pass
+ * `downloadAs` to save the bytes as a file with that name instead of showing them.
+ */
+export function untrustedFileResponse(
+  body: BodyInit | null,
+  claimedType: string | null | undefined,
+  opts: { downloadAs?: string; cacheControl?: string; size?: number } = {},
+): Response {
+  const contentType = pinnedContentType(claimedType);
+  const headers = new Headers({
+    "Content-Type": contentType,
+    "Content-Disposition": opts.downloadAs
+      ? contentDisposition(opts.downloadAs)
+      : contentType === GENERIC_BYTES
+        ? "attachment"
+        : "inline",
+    "X-Content-Type-Options": "nosniff",
+    "Cache-Control": opts.cacheControl ?? "private, no-store",
+  });
+  if (opts.size !== undefined) headers.set("Content-Length", String(opts.size));
+  return new Response(body, { headers });
 }
 
 /**

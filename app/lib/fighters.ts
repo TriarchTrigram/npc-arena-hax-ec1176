@@ -1,4 +1,4 @@
-// The 16 fighters, the 9 quest fighters, the 2 new-generation fighters and their power moves. Shared by the arena engine and the Fighters page.
+// The 16 fighters, the 9 quest fighters, the 3 new-generation fighters and their power moves. Shared by the arena engine and the Fighters page.
 import { BOSSES, type BossId } from "./bosses";
 
 export type Power =
@@ -7,7 +7,7 @@ export type Power =
   // quest fighters, earned on the Quests page
   | "spatio" | "hexizon" | "gamma" | "velo" | "portal" | "sono" | "paper" | "crys" | "sand"
   // new generation, a chance to join after any Story boss win
-  | "plasma" | "flora";
+  | "plasma" | "flora" | "chaos";
 
 export type Role = "attacker" | "control" | "tank" | "support" | "trickster";
 
@@ -495,12 +495,27 @@ export const QUESTERS: FighterDef[] = [
       M({ id: "photosynthesis", name: "Photosynthesis", kind: "heal", anim: "raise", range: 2000, cd: 11, dmg: 0, heal: 26, below: 0.65, wind: 0.34, rec: 0.3 }),
     ],
   },
+  {
+    id: "chaos", name: "Turbo", power: "Chaos Energy Manipulation", role: "attacker",
+    ability: "The fastest of the new generation, and he knows it. Turbo runs on raw chaos energy: spears of it thrown on the move, a dash that breaks the sound barrier and a step that skips him through space. Push him far enough and seven emeralds answer.",
+    color: "hsl(218 88% 52%)", glow: "hsl(28 100% 58%)", hp: 300, speed: 140,
+    moves: [
+      M({ id: "turbo-jab", name: "Turbo Jab", kind: "melee", anim: "jab", range: 76, cd: 0.7, dmg: 10, kb: 240 }),
+      M({ id: "spin-kick", name: "Spin Kick", kind: "melee", anim: "kick", range: 94, cd: 1.1, dmg: 13, kb: 320, lift: -380 }),
+      M({ id: "chaos-bolt", name: "Chaos Bolt", kind: "projectile", anim: "cast", range: 620, minRange: 70, cd: 1.8, dmg: 10, speed: 880, size: 11, shape: "orb", status: "stun", statusDur: 0.15 }),
+      M({ id: "chaos-javelin", name: "Chaos Javelin", kind: "projectile", anim: "thrust", range: 600, minRange: 80, cd: 2.4, dmg: 6, speed: 960, size: 9, count: 3, spread: 0.1, shape: "shard", pierce: true }),
+      M({ id: "boost-dash", name: "Boost Dash", kind: "dash", anim: "lunge", range: 420, cd: 2.8, dmg: 14, dist: 420, act: 0.18, kb: 380, lift: -180 }),
+      M({ id: "blur-step", name: "Blur Step", kind: "blink", anim: "kick", range: 640, minRange: 100, cd: 3, dmg: 13, kb: 300, lift: -260 }),
+      M({ id: "chaos-burst", name: "Chaos Burst", kind: "burst", anim: "spin", range: 150, cd: 5, dmg: 15, radius: 170, kb: 500, lift: -320, wind: 0.26 }),
+      M({ id: "second-wind", name: "Second Wind", kind: "heal", anim: "raise", range: 2000, cd: 12, dmg: 0, heal: 22, below: 0.55, wind: 0.32, rec: 0.3 }),
+    ],
+  },
 ];
 
 export const QUEST_IDS = new Set<Power>(QUESTERS.map((q) => q.id));
 export const isQuester = (id: string) => QUEST_IDS.has(id as Power);
 /** The young new-generation fighters: listed with the quest fighters for the arena, but won by luck after a boss win, not by a quest. */
-export const NEWGEN_IDS: Power[] = ["plasma", "flora"];
+export const NEWGEN_IDS: Power[] = ["plasma", "flora", "chaos"];
 export const isNewGen = (id: string) => NEWGEN_IDS.includes(id as Power);
 
 export const DEF_BY_ID = Object.fromEntries([...FIGHTERS, ...QUESTERS].map((f) => [f.id, f])) as Record<Power, FighterDef>;
@@ -538,6 +553,7 @@ const WINGS: Record<Power, Wing> = {
   sand: { word: "Dune", shape: "rock", status: "blind", statusDur: 0.8 },
   plasma: { word: "Plasma", shape: "orb", status: "burn", statusDur: 1.5 },
   flora: { word: "Thorn", shape: "shard", status: "poison", statusDur: 2, heal: 8 },
+  chaos: { word: "Chaos", shape: "shard", status: "stun", statusDur: 0.15 },
 };
 
 export function wingMoves(id: Power): Move[] {

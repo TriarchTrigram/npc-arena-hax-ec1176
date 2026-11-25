@@ -1444,6 +1444,65 @@ export const INTROS: Record<Power, IntroSpec> = {
     },
   },
 
+  // Turbo: a blue streak tears in along the floor, Turbo skids to a stop on the spot in a spray of sparks and a ring of
+  // chaos energy, and stands up with the scarf still flying.
+  chaos: {
+    len: 1.6, hit: 0.44, shake: 8, wave: ["hsl(218 90% 60%)", "hsl(28 100% 62%)"],
+    body: (u, s) => base(u < 0.44 ? "air" : settle(u, "land", 0.66), {
+      alpha: u < 0.3 ? 0 : 1,
+      dx: u < 0.44 ? -(1 - easeOut(seg(u, 0.3, 0.44))) * 280 * s : 0,
+      dy: u < 0.44 ? -10 * s * (1 - seg(u, 0.3, 0.44)) : 0,
+      sx: u < 0.52 ? 1.3 - 0.3 * seg(u, 0.44, 0.52) : 1, sy: u < 0.52 ? 0.86 : 1,
+      echo: u > 0.3 && u < 0.7 ? { spread: (1 - seg(u, 0.3, 0.7)) * 60 * s, alpha: 0.45 * (1 - seg(u, 0.3, 0.7)) } : undefined,
+      solid: "hsl(215 100% 70%)", solidA: 1 - seg(u, 0.44, 0.7),
+    }),
+    bursts: [
+      { at: 0.44, n: 30, spd: 560, shape: "spark", a: "hsl(28 100% 62%)", b: "hsl(48 100% 80%)", grav: 260, add: true, from: "feet", dir: "flat" },
+      { at: 0.44, n: 18, spd: 380, shape: "star", a: "hsl(218 100% 70%)", b: "hsl(0 0% 100%)", grav: -40, add: true, from: "body", dir: "out" },
+      { at: 0.46, n: 16, spd: 300, shape: "dust", a: "hsl(30 20% 60%)", b: "hsl(40 25% 80%)", grav: -20, add: false, from: "feet", dir: "flat" },
+    ],
+    back: ({ ctx, x, ground, s, u, t }) => {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      // the streak: a bright head racing in along the floor with a long blue tail
+      const run = seg(u, 0.04, 0.44);
+      if (run > 0 && u < 0.5) {
+        const hx = lerp(x - 700 * s, x, easeOut(run));
+        const tail = 240 * s * (1 - seg(u, 0.44, 0.5));
+        for (let i = 0; i < 10; i++) {
+          const k = i / 10;
+          glow(ctx, hx - k * tail, ground - 36 * s, (26 - i * 1.6) * s, (34 - i * 2.4) * s, hsla(i < 2 ? 0 : 218, i < 2 ? 0 : 100, i < 2 ? 100 : 62, 0.55 * (1 - k)), hsla(218, 100, 55, 0));
+        }
+        // a thin orange line where the scarf streams behind
+        ctx.strokeStyle = hsla(28, 100, 62, 0.8);
+        ctx.lineWidth = 3 * s;
+        ctx.beginPath();
+        ctx.moveTo(hx - 6 * s, ground - 54 * s);
+        for (let i = 1; i <= 8; i++) ctx.lineTo(hx - (i / 8) * tail * 0.8, ground - 54 * s + Math.sin(t * 20 + i) * 5 * s);
+        ctx.stroke();
+      }
+      // the skid marks and the ring of chaos energy left where he stopped
+      const mark = seg(u, 0.42, 0.5) * (1 - seg(u, 0.75, 1));
+      if (mark > 0) {
+        ctx.strokeStyle = hsla(28, 100, 62, 0.7 * mark);
+        ctx.lineWidth = 2 * s;
+        for (const dy of [-1, 2]) {
+          ctx.beginPath();
+          ctx.moveTo(x - 140 * s, ground + dy * s);
+          ctx.lineTo(x, ground + dy * s);
+          ctx.stroke();
+        }
+        const ring = seg(u, 0.44, 0.8);
+        ctx.strokeStyle = hsla(218, 100, 74, 0.8 * mark);
+        ctx.lineWidth = 3 * s;
+        ctx.beginPath();
+        ctx.ellipse(x, ground - 2 * s, (30 + ring * 120) * s, (6 + ring * 18) * s, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    },
+  },
+
   // Briar: a seed drops and lands on the spot, vines spiral up out of it into a tall closed bud, and the bud opens
   // petal by petal with Briar standing in the middle.
   flora: {

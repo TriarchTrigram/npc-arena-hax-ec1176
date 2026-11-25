@@ -6,7 +6,7 @@ import { INTROS, BOSS_INTROS, fusionIntro, INTRO_LEN, INTRO_ARRIVED, type IntroB
 import { LOOKS, setLookTint, drawFx, drawSpark, drawShotLook, drawBeamLook, drawEruptionLook, drawZoneLook, drawRushLook, drawAnnihilation, eruptionColors, type Fx, type PShape } from "./move-looks";
 import { drawBossDesign, type BossAct } from "./boss-designs";
 import { drawQuestDesign, type QuestAct } from "./quest-designs";
-import { FORMS, PERFECTED_FLAME, formShout, type Form, type FormKind } from "./forms";
+import { FORMS, formShout, formsOf, type Form, type FormKind } from "./forms";
 import { BOSS_PHASES } from "./bosses";
 
 export const W = 960;
@@ -126,6 +126,8 @@ const QUEST_STANCE: Partial<Record<Power, Pose>> = {
   plasma: { t: 0.18, aF1: 1.2, aF2: 2.5, aB1: 0.9, aB2: 2.3, lF1: 0.55, lF2: -0.02, lB1: -0.5, lB2: -0.35 },
   // Briar: low and rooted, front palm open to the floor as if feeling the roots, back hand up with a seed ready
   flora: { t: 0.2, aF1: 1.0, aF2: 0.7, aB1: 2.2, aB2: 3.1, lF1: 0.7, lF2: 0.0, lB1: -0.58, lB2: -0.3 },
+  // Turbo: leaning into a sprint start, weight on the front foot, front hand out loose, back arm swung behind
+  chaos: { t: 0.3, aF1: 1.3, aF2: 1.9, aB1: -0.9, aB2: -0.3, lF1: 0.65, lF2: -0.1, lB1: -0.55, lB2: -0.4 },
 };
 const pairHash = (a: Power, b: Power) => [a, b].sort().join("+").split("").reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 /** The rest stance this fighter stands in. */
@@ -152,8 +154,8 @@ function idlePose(f: Fighter, gt: number): Pose {
   if (QUEST_STANCE[f.def.id]) {
     // Parallax drifts slowly, Hexizon bobs on the balls of his feet, Halflife heaves, Redline can't stand still, Liminal sways,
     // Overtone nods to a beat, Vellum drifts like a sheet on the air, Facet barely moves, Sirocco sways like heat haze,
-    // Volta can't keep still, Briar sways like a plant in the wind
-    const hz = ({ hexizon: 5.5, gamma: 2.6, velo: 9, portal: 1.4, sono: 7.5, paper: 1.2, crys: 1, sand: 3.4, plasma: 8, flora: 1.6 } as Partial<Record<Power, number>>)[f.def.id] ?? 1.8;
+    // Volta can't keep still, Briar sways like a plant in the wind, Turbo taps his foot waiting for the fight to start
+    const hz = ({ hexizon: 5.5, gamma: 2.6, velo: 9, portal: 1.4, sono: 7.5, paper: 1.2, crys: 1, sand: 3.4, plasma: 8, flora: 1.6, chaos: 7 } as Partial<Record<Power, number>>)[f.def.id] ?? 1.8;
     const b = Math.sin(gt * hz + f.key);
     return { ...st, t: st.t + b * 0.03, aF2: st.aF2 + b * 0.06, aB2: st.aB2 + b * 0.06, lF1: st.lF1 + b * 0.04, lB1: st.lB1 - b * 0.04 };
   }
@@ -265,6 +267,7 @@ const FX: Record<Power, { shape: PShape; add: boolean; grav: number }> = {
   sand: { shape: "dust", add: false, grav: 420 },
   plasma: { shape: "spark", add: true, grav: -60 },
   flora: { shape: "leaf", add: false, grav: 140 },
+  chaos: { shape: "star", add: true, grav: -40 },
 };
 
 // ---------- Forms ----------
@@ -276,8 +279,12 @@ const CUT_TIME = 2.7;
 const RAGE_POSE: Pose = { t: -0.22, aF1: 0.5, aF2: 0.2, aB1: -0.5, aB2: -0.2, lF1: 0.5, lF2: 0.22, lB1: -0.5, lB2: -0.22 };
 const ROAR_POSE: Pose = { ...RAGE_POSE, t: -0.3, ...ANIMS.raise.strike };
 const rageOf = (f?: Fighter | null) => f?.form ?? null;
-/** Nightmare Mode can't be stunned or frozen: those effects never take hold while it is on. */
-const shrugsOff = (f: Fighter, st?: StatusEffect) => (st === "stun" || st === "freeze") && rageOf(f)?.kind === "nightmare";
+/** Forms that can't be stunned or frozen: Nightmare Mode, Surge Mode and Hyper Form. */
+const UNSTOPPABLE: FormKind[] = ["nightmare", "surge", "hyper"];
+/** Nightmare Mode, Surge Mode and Hyper Form can't be stunned or frozen: those effects never take hold while they are on. */
+const shrugsOff = (f: Fighter, st?: StatusEffect) => (st === "stun" || st === "freeze") && UNSTOPPABLE.includes(rageOf(f)?.kind as FormKind);
+/** Nightmare Mode and Surge Mode share their dark look: smoke, a jagged halo and the world going black in the cutscene. */
+const isDarkForm = (k?: FormKind) => k === "nightmare" || k === "surge";
 /** The form a fighter breaks into now, if any. Forms only belong to the pure fighters, not to a hybrid or a boss carrying their power.
  * A Story boss has its own phases instead (BOSS_PHASES in bosses.ts), taken one at a time as its health runs down. */
 function nextForm(f: Fighter): Form | null {
@@ -290,11 +297,19 @@ function nextForm(f: Fighter): Form | null {
     return next && share <= next.at ? next : null;
   }
   if (!f.form) { const fm = FORMS[f.def.id]; return fm && share <= fm.at ? fm : null; }
-  if (f.form === FORMS.pyro && share <= PERFECTED_FLAME.at) return PERFECTED_FLAME;
-  return null;
+  // a fighter with a second step (Pyro's Perfected Flame, Turbo's Hyper Form) takes it once pushed further
+  const chain = formsOf(f.def.id);
+  const i = chain.indexOf(f.form);
+  const nx = i >= 0 ? chain[i + 1] : undefined;
+  return nx && share <= nx.at ? nx : null;
 }
 /** The particle a form's power gathers in as, when it is not the element's own. */
-const FORM_SPARK: Partial<Record<FormKind, PShape>> = { perfected: "ember", awakened: "star", mystic: "glyph" };
+const FORM_SPARK: Partial<Record<FormKind, PShape>> = { perfected: "ember", awakened: "star", mystic: "glyph", super: "star", hyper: "star" };
+/** Super and Hyper Form: arms crossed while the emeralds circle, then flung wide as they crash in. */
+const EMERALD_POSES: [Pose, Pose] = [
+  { ...STANCE, t: 0.32, aF1: 1.35, aF2: 2.95, aB1: 1.2, aB2: 2.85, lF1: 0.5, lF2: -0.12, lB1: -0.5, lB2: -0.32 },
+  { ...STANCE, t: -0.32, aF1: 1.95, aF2: 2.1, aB1: -1.95, aB2: -2.1, lF1: 0.32, lF2: 0.05, lB1: -0.32, lB2: -0.1 },
+];
 /** The two poses a form's cutscene moves through: power gathering, then breaking loose. */
 const CUT_POSES: Record<FormKind, [Pose, Pose]> = {
   rage: [RAGE_POSE, ROAR_POSE],
@@ -302,6 +317,9 @@ const CUT_POSES: Record<FormKind, [Pose, Pose]> = {
   awakened: [{ ...RAGE_POSE, t: 0.35, aF1: 0.2, aB1: -0.2 }, { ...STANCE, t: -0.25, aF1: 2.4, aF2: 2.6, aB1: -2.4, aB2: -2.6, lF1: 0.3, lB1: -0.3 }],
   mastery: [{ ...STANCE, t: 0.05, aF1: 1.1, aF2: 2.2, aB1: 1.0, aB2: 2.3, lF1: 0.35, lF2: 0.1, lB1: -0.35, lB2: -0.1 }, { ...STANCE, t: 0.1, ...ANIMS.thrust.strike, lF1: 0.6, lF2: 0.1, lB1: -0.6, lB2: -0.3 }],
   nightmare: [{ ...RAGE_POSE, t: 0.7, aF1: 0.3, aF2: 0.1, aB1: 0.2, aB2: 0.05, lF1: 0.9, lF2: -0.3, lB1: -0.4, lB2: -0.9 }, { ...ROAR_POSE, t: -0.45, aF1: 2.2, aF2: 1.9, aB1: -2.2, aB2: -1.9 }],
+  surge: [{ ...RAGE_POSE, t: 0.7, aF1: 0.3, aF2: 0.1, aB1: 0.2, aB2: 0.05, lF1: 0.9, lF2: -0.3, lB1: -0.4, lB2: -0.9 }, { ...ROAR_POSE, t: -0.45, aF1: 2.2, aF2: 1.9, aB1: -2.2, aB2: -1.9 }],
+  super: EMERALD_POSES,
+  hyper: [EMERALD_POSES[0], { ...EMERALD_POSES[1], t: -0.42, aF1: 2.3, aB1: -2.3 }],
   phase: [{ ...RAGE_POSE, t: 0.5, aF1: 0.6, aF2: 0.3, aB1: -0.6, aB2: -0.3, lF1: 0.7, lF2: -0.2, lB1: -0.6, lB2: -0.5 }, { ...ROAR_POSE, t: -0.4, aF1: 2.5, aF2: 2.2, aB1: -2.5, aB2: -2.2, lF1: 0.55, lB1: -0.55 }],
   mystic: [{ ...STANCE, t: 0, aF1: 0.9, aF2: 1.7, aB1: -0.9, aB2: -1.7, lF1: 0.9, lF2: -1.2, lB1: -0.9, lB2: 1.2 }, { ...STANCE, t: -0.15, aF1: 1.9, aF2: 2.2, aB1: -1.9, aB2: -2.2, lF1: 0.15, lF2: 0.1, lB1: -0.15, lB2: -0.1 }],
 };
@@ -565,6 +583,9 @@ function emitMove(g: Game, m: Move, power: Power, x: number, y: number, n: numbe
 function rageColor(r: Rage) {
   const k = Math.random();
   if (r.kind === "perfected") return k < 0.45 ? r.a : k < 0.9 ? r.b : "hsl(0 0% 100%)";
+  if (r.kind === "super") return k < 0.5 ? r.a : k < 0.85 ? r.b : "hsl(0 0% 100%)";
+  // Hyper Form shimmers through every colour
+  if (r.kind === "hyper") return k < 0.6 ? `hsl(${Math.floor(Math.random() * 360)} 100% 76%)` : "hsl(0 0% 100%)";
   return r.dark && k < 0.3 ? r.dark : k < 0.65 ? r.a : r.b;
 }
 
@@ -1551,10 +1572,11 @@ function startForm(g: Game, f: Fighter, fm: Form) {
   f.hurtT = 0;
   f.vx = 0;
   // breaking into Nightmare Mode or a boss's next phase throws off any stun or freeze already on the fighter
-  if (fm.kind === "nightmare" || fm.kind === "phase") { f.status.stun = 0; f.status.freeze = 0; }
+  if (UNSTOPPABLE.includes(fm.kind) || fm.kind === "phase") { f.status.stun = 0; f.status.freeze = 0; }
   // a crowded free for all gets a shorter cutscene so the fight keeps moving
   const crowd = g.fighters.filter((o) => o.alive).length > 4;
-  g.cut = { key: f.key, t: 0, max: crowd ? 1.6 : fm.kind === "perfected" || fm.kind === "nightmare" || fm.kind === "phase" ? CUT_TIME + 0.6 : CUT_TIME };
+  // Super and Hyper Form get the longest cutscene, so the emeralds have time to circle and crash in
+  g.cut = { key: f.key, t: 0, max: crowd ? 1.6 : fm.kind === "super" || fm.kind === "hyper" ? CUT_TIME + 1 : fm.kind === "perfected" || isDarkForm(fm.kind) || fm.kind === "phase" ? CUT_TIME + 0.6 : CUT_TIME };
   g.hitstop = 0;
   sfx(g, { k: "rage", power: f.def.id, step: fm.step });
 }
@@ -1582,7 +1604,7 @@ function stepCut(g: Game, dt: number) {
     if (Math.random() < dt * 30) emit(g, f.def.id, f.x + rand(-20, 20) * s, f.y - rand(0, 110) * s, 1, 90);
     if (k > 0.72 && !f.ghosts.length) f.ghosts.push({ x: f.x, y: f.y, pose: { ...f.pose }, face: f.facing, life: 0.4 });
     const [gather, loose] = CUT_POSES[rg.kind];
-    const quiver = rg.kind === "rage" || rg.kind === "perfected" || rg.kind === "nightmare" || rg.kind === "phase" ? 0.03 : 0.012;
+    const quiver = rg.kind === "rage" || rg.kind === "perfected" || isDarkForm(rg.kind) || rg.kind === "phase" ? 0.03 : 0.012;
     smoothPose(f, k < 0.62 ? { ...gather, t: gather.t + Math.sin(cut.t * 30) * quiver } : loose, dt, k < 0.62 ? 10 : 26);
     paint = null;
   }
@@ -3066,7 +3088,7 @@ function drawFighterBody(ctx: CanvasRenderingContext2D, g: Game, f: Fighter, o: 
   // a quest fighter (not a hybrid carrying its power) wears its own design
   const quest = isQuester(f.def.id) && !f.def.parents && !f.def.boss && !o.solid;
   let questAct: QuestAct | undefined;
-  const questPaint = { glow: rg?.glow ?? f.def.glow, a: rg?.a ?? f.def.color, b: rg?.b ?? f.def.glow, nightmare: rg?.kind === "nightmare" };
+  const questPaint = { glow: rg?.glow ?? f.def.glow, a: rg?.a ?? f.def.color, b: rg?.b ?? f.def.glow, nightmare: isDarkForm(rg?.kind) };
   if (quest && f.act && f.alive) {
     const m = f.act.move, at = f.act.t;
     const strikeLen = Math.max(0.12, m.act + m.rec * 0.5);
@@ -3327,7 +3349,34 @@ function drawRageAura(ctx: CanvasRenderingContext2D, g: Game, f: Fighter, rg: Ra
       ctx.closePath();
       ctx.fill();
     }
-  } else if (rg.kind === "nightmare") {
+  } else if (rg.kind === "super" || rg.kind === "hyper") {
+    // Super Form: golden sparkles twinkling round the body; Hyper Form: the same, cycling through every colour
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = 0; i < 8; i++) {
+      const an = t * 1.7 + i * 0.79;
+      const tw = Math.max(0, Math.sin(t * 6 + i * 1.9));
+      if (tw < 0.05) continue;
+      const x = cx + Math.cos(an) * (30 + (i % 3) * 10) * s, y = cy + Math.sin(an * 1.3) * 52 * s;
+      const col = rg.kind === "hyper" ? `hsl(${Math.floor((t * 200 + i * 45) % 360)} 100% 78%)` : i % 2 ? rg.b : rg.a;
+      const r = (4 + 5 * tw) * s;
+      ctx.fillStyle = shade(col, 0, 0.95 * tw);
+      ctx.beginPath();
+      for (let j = 0; j < 8; j++) {
+        const a = (j / 8) * Math.PI * 2, rr = j % 2 ? r * 0.25 : r;
+        j ? ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) : ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+    // a flickering light rising off the body like a flame
+    const fl = ctx.createLinearGradient(cx, f.y, cx, f.y - 150 * s);
+    const top = rg.kind === "hyper" ? `hsl(${Math.floor((t * 160) % 360)} 100% 80%)` : rg.b;
+    fl.addColorStop(0, shade(rg.a, 0, 0.32));
+    fl.addColorStop(1, shade(top, 0, 0));
+    ctx.fillStyle = fl;
+    const fw = (22 + Math.sin(t * 11) * 4) * s;
+    ctx.fillRect(cx - fw, f.y - 150 * s, fw * 2, 150 * s);
+  } else if (isDarkForm(rg.kind)) {
     // black smoke pouring upward with the form's colour flickering through it, and a jagged dark halo
     for (let i = 0; i < 9; i++) {
       const ph = (t * 1.6 + i / 9) % 1;
@@ -3975,6 +4024,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, g: Game, backdrop: HTML
   setLookTint(null);
   if (hero) drawCutBackdrop(ctx, hero, ck, g.t + (cut?.t ?? 0));
   if (hero) { drawGhosts(ctx, hero); drawFighter(ctx, g, hero); }
+  if (hero?.form && (hero.form.kind === "super" || hero.form.kind === "hyper")) drawEmeralds(ctx, hero, hero.form, ck, g.t + (cut?.t ?? 0), "front");
   for (const a of g.annis) {
     const owner = g.fighters[a.owner];
     drawAnnihilation(ctx, a.move.id, a.x, a.y, (a.move.radius ?? 70) * (owner?.scale ?? 1), a.t / ANNI_TIME, g.t);
@@ -4168,7 +4218,9 @@ function drawCutBackdrop(ctx: CanvasRenderingContext2D, f: Fighter, k: number, t
   } else if (rg.kind === "mystic") {
     runeCircle(ctx, c.x, c.y, 120 + 40 * Math.min(1, k * 3), t, rg.a, rg.b, 0.9);
     runeCircle(ctx, c.x, f.y, 70, -t * 1.4, rg.b, rg.a, 0.6);
-  } else if (rg.kind === "nightmare") {
+  } else if (rg.kind === "super" || rg.kind === "hyper") {
+    drawEmeralds(ctx, f, rg, k, t, "back");
+  } else if (isDarkForm(rg.kind)) {
     // the world goes black: everything outside a ring of the form's colour is swallowed, with cracks running out
     ctx.fillStyle = `hsl(0 0% 0% / ${0.55 * Math.min(1, k * 2)})`;
     ctx.fillRect(-W, -H, W * 3, H * 3);
@@ -4229,8 +4281,176 @@ function drawCutBackdrop(ctx: CanvasRenderingContext2D, f: Fighter, k: number, t
   // flash as the rage breaks loose
   if (k > 0.6 && k < 0.75) {
     ctx.globalAlpha = 1 - (k - 0.6) / 0.15;
-    ctx.fillStyle = rg.dark && f.def.id === "electro" && Math.floor(t * 30) % 2 ? rg.dark : "white";
+    ctx.fillStyle = rg.kind === "super" ? "hsl(48 100% 72%)" : rg.dark && f.def.id === "electro" && Math.floor(t * 30) % 2 ? rg.dark : "white";
     ctx.fillRect(-W, -H, W * 3, H * 3);
+  }
+  ctx.restore();
+}
+
+// ---------- Super and Hyper Form: the emeralds ----------
+const seg = (k: number, a: number, b: number) => clamp((k - a) / (b - a), 0, 1);
+/** The seven emeralds' colours. */
+const EMERALDS = ["hsl(140 85% 48%)", "hsl(355 90% 55%)", "hsl(215 95% 58%)", "hsl(50 100% 55%)", "hsl(185 95% 55%)", "hsl(285 85% 62%)", "hsl(210 20% 90%)"];
+
+/** One cut gem: a flat top, sloped shoulders and a point at the bottom, lit from the top left, with a glow around it. */
+function drawGem(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, col: string, alpha: number, shine: number) {
+  if (alpha <= 0.01) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.globalCompositeOperation = "lighter";
+  const g = ctx.createRadialGradient(x, y, 0, x, y, size * 2.6);
+  g.addColorStop(0, shade(col, 10, 0.6 + shine * 0.3));
+  g.addColorStop(1, shade(col, 0, 0));
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(x, y, size * 2.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalCompositeOperation = "source-over";
+  const w = size, h = size * 1.2;
+  const body = ctx.createLinearGradient(x - w, y - h, x + w, y + h);
+  body.addColorStop(0, shade(col, 30));
+  body.addColorStop(0.5, col);
+  body.addColorStop(1, shade(col, -22));
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.moveTo(x - w * 0.55, y - h * 0.55);
+  ctx.lineTo(x + w * 0.55, y - h * 0.55);
+  ctx.lineTo(x + w, y - h * 0.1);
+  ctx.lineTo(x, y + h * 0.75);
+  ctx.lineTo(x - w, y - h * 0.1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = shade(col, 38, 0.95);
+  ctx.lineWidth = Math.max(1, size * 0.12);
+  ctx.stroke();
+  // the facets: the girdle line and two cuts down to the point
+  ctx.beginPath();
+  ctx.moveTo(x - w, y - h * 0.1);
+  ctx.lineTo(x + w, y - h * 0.1);
+  ctx.moveTo(x - w * 0.3, y - h * 0.1);
+  ctx.lineTo(x, y + h * 0.75);
+  ctx.lineTo(x + w * 0.3, y - h * 0.1);
+  ctx.stroke();
+  // a glint of white on the top
+  ctx.fillStyle = `hsl(0 0% 100% / ${0.55 + shine * 0.45})`;
+  ctx.beginPath();
+  ctx.ellipse(x - w * 0.25, y - h * 0.36, w * 0.22, h * 0.09, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Super Form: seven emeralds appear round him, spin faster and faster, and crash into him in a golden light.
+ * Hyper Form: a great emerald flashes first, the seven turn into super emeralds, spin, and crash in white and every colour.
+ * Drawn twice, behind the fighter and in front, so the emeralds pass both ways round him. */
+function drawEmeralds(ctx: CanvasRenderingContext2D, f: Fighter, rg: Rage, k: number, t: number, layer: "back" | "front") {
+  const c = center(f);
+  const hyper = rg.kind === "hyper";
+  ctx.save();
+  // Hyper Form: a great emerald flashes behind him for a moment
+  if (hyper && layer === "back") {
+    const m = Math.sin(seg(k, 0.02, 0.24) * Math.PI);
+    if (m > 0) {
+      ctx.globalCompositeOperation = "lighter";
+      const g = ctx.createRadialGradient(c.x, c.y - 30, 0, c.x, c.y - 30, 300);
+      g.addColorStop(0, `hsl(140 100% 60% / ${0.55 * m})`);
+      g.addColorStop(1, "hsl(140 100% 50% / 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(c.x - 300, c.y - 330, 600, 600);
+      ctx.globalCompositeOperation = "source-over";
+      drawGem(ctx, c.x, c.y - 40, 70 + 12 * m, "hsl(140 90% 44%)", m, m);
+    }
+  }
+  // the seven circling, the ring tightening and the spin speeding up until they hit him
+  const appear = seg(k, hyper ? 0.14 : 0.03, hyper ? 0.24 : 0.16);
+  const close = Math.pow(seg(k, 0.36, 0.6), 2);
+  const spin = k * 4 + Math.pow(k, 3) * 26;
+  const turnSuper = hyper ? seg(k, 0.28, 0.38) : 0;
+  const R = 170 * (1 - close) + 6;
+  if (k < 0.62) {
+    for (let i = 0; i < 7; i++) {
+      const shown = clamp(appear * 7 - i, 0, 1);
+      if (shown <= 0) continue;
+      const a = spin + (i / 7) * Math.PI * 2;
+      const front = Math.sin(a) > 0;
+      if ((layer === "front") !== front) continue;
+      const x = c.x + Math.cos(a) * R, y = c.y + Math.sin(a) * R * 0.34 + Math.sin(t * 3 + i) * 5 * (1 - close);
+      const depth = 0.85 + 0.15 * Math.sin(a);
+      const size = 13 * depth * (1 + turnSuper * 0.3) * (1 - close * 0.4);
+      // the streak each one leaves as it spins faster
+      if (close > 0.05 || k > 0.3) {
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.strokeStyle = shade(EMERALDS[i], 20, 0.45);
+        ctx.lineWidth = size * 0.7;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y, R, R * 0.34, 0, a - 0.5 - close * 0.6, a);
+        ctx.stroke();
+        ctx.restore();
+      }
+      drawGem(ctx, x, y, size, EMERALDS[i], shown * (1 - turnSuper), 0.3);
+      if (turnSuper > 0) {
+        // the super emerald: paler, brighter, a ring of light round it, and a white pop as it changes
+        drawGem(ctx, x, y, size, shade(EMERALDS[i], 22), shown * turnSuper, 1);
+        const pop = Math.sin(turnSuper * Math.PI);
+        if (pop > 0.02) {
+          ctx.save();
+          ctx.globalCompositeOperation = "lighter";
+          const g = ctx.createRadialGradient(x, y, 0, x, y, size * 4);
+          g.addColorStop(0, `hsl(0 0% 100% / ${0.9 * pop})`);
+          g.addColorStop(1, "hsl(0 0% 100% / 0)");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(x, y, size * 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.strokeStyle = shade(EMERALDS[i], 30, 0.8 * turnSuper);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, size * 1.7 + Math.sin(t * 8 + i) * 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+  // the moment they hit: Super Form a burst of gold, Hyper Form white with rings of every colour spreading out
+  if (layer === "front" && k > 0.55) {
+    const u = seg(k, 0.55, 1);
+    const fade = 1 - seg(k, 0.82, 1);
+    ctx.globalCompositeOperation = "lighter";
+    const core = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, 80 + u * 260);
+    core.addColorStop(0, hyper ? `hsl(0 0% 100% / ${0.9 * fade})` : `hsl(50 100% 80% / ${0.9 * fade})`);
+    core.addColorStop(0.5, hyper ? `hsl(200 100% 90% / ${0.4 * fade})` : `hsl(44 100% 60% / ${0.45 * fade})`);
+    core.addColorStop(1, "hsl(48 100% 60% / 0)");
+    ctx.fillStyle = core;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 80 + u * 260, 0, Math.PI * 2);
+    ctx.fill();
+    if (hyper) {
+      // chromatic rings, each colour a little ahead of the last
+      ctx.lineWidth = 7;
+      for (let i = 0; i < 7; i++) {
+        const rr = 40 + u * 560 - i * 16;
+        if (rr <= 0) continue;
+        ctx.strokeStyle = `hsl(${(i * 52 + t * 120) % 360} 100% 66% / ${0.75 * fade})`;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, rr, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else {
+      // golden rays bursting out
+      ctx.lineCap = "round";
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2 + 0.2;
+        const r0 = 30 + u * 80, r1 = r0 + 120 + u * 340;
+        ctx.strokeStyle = `hsl(${44 + (i % 3) * 6} 100% ${70 + (i % 2) * 14}% / ${0.7 * fade})`;
+        ctx.lineWidth = 4 + (i % 3) * 2;
+        ctx.beginPath();
+        ctx.moveTo(c.x + Math.cos(a) * r0, c.y + Math.sin(a) * r0);
+        ctx.lineTo(c.x + Math.cos(a) * r1, c.y + Math.sin(a) * r1);
+        ctx.stroke();
+      }
+    }
   }
   ctx.restore();
 }

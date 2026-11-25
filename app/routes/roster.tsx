@@ -19,7 +19,7 @@ import { BOSSES, BOSS_PHASES, type BossId } from "~/lib/bosses";
 import { bossChapter, bossesBeaten, loadProgress } from "~/lib/story";
 import { QUESTS, unlockedOf, useQuests } from "~/lib/quests";
 import { FighterPortrait } from "~/components/quest-scenes";
-import { FORMS, FORM_NAME, PERFECTED_FLAME, formsOf, type Form, type FormKind } from "~/lib/forms";
+import { FORMS, FORM_NAME, HYPER_FORM, PERFECTED_FLAME, formsOf, type Form, type FormKind } from "~/lib/forms";
 import { useHybrids } from "~/lib/hybrids";
 import { FusionSheet, HybridParents } from "~/components/fusion-sheet";
 
@@ -137,6 +137,9 @@ const FORM_TONE: Record<FormKind, "neutral" | "info" | "success" | "warning" | "
   mastery: "info",
   mystic: "success",
   nightmare: "danger",
+  surge: "info",
+  super: "warning",
+  hyper: "neutral",
   phase: "danger",
 };
 
@@ -166,7 +169,7 @@ function FormBlock({ form }: { form: Form }) {
   );
 }
 
-const FORM_GROUPS: FormKind[] = ["rage", "awakened", "mastery", "mystic", "perfected", "nightmare"];
+const FORM_GROUPS: FormKind[] = ["rage", "awakened", "mastery", "mystic", "perfected", "nightmare", "surge", "super", "hyper"];
 
 /** Who has which form, at a glance. */
 function FormsOverview() {
@@ -176,7 +179,7 @@ function FormsOverview() {
       <Text id="roster.forms.subtitle" as="p" className="-mt-2 mb-6 max-w-prose text-foreground-secondary" />
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {FORM_GROUPS.map((kind) => {
-          const members = kind === "perfected" ? [PERFECTED_FLAME] : [...FIGHTERS, ...QUESTERS].map((f) => FORMS[f.id]).filter((fm) => fm.kind === kind);
+          const members = kind === "perfected" ? [PERFECTED_FLAME] : kind === "hyper" ? [HYPER_FORM] : [...FIGHTERS, ...QUESTERS].map((f) => FORMS[f.id]).filter((fm) => fm.kind === kind);
           return (
             <li key={kind}>
               <Panel className="h-full">
@@ -186,7 +189,7 @@ function FormsOverview() {
                   <ul className="flex flex-col gap-2">
                     {members.map((fm) => (
                       <li key={fm.power + fm.kind} className="flex items-center gap-2 text-sm">
-                        <span aria-hidden="true" className="size-3 shrink-0 rounded-full border-2 border-foreground" style={{ background: kind === "perfected" ? `linear-gradient(90deg, ${fm.a} 50%, ${fm.b} 50%)` : fm.a }} />
+                        <span aria-hidden="true" className="size-3 shrink-0 rounded-full border-2 border-foreground" style={{ background: kind === "perfected" ? `linear-gradient(90deg, ${fm.a} 50%, ${fm.b} 50%)` : kind === "hyper" ? "conic-gradient(hsl(0 90% 65%), hsl(60 90% 65%), hsl(120 80% 60%), hsl(190 90% 65%), hsl(260 90% 70%), hsl(320 90% 70%), hsl(0 90% 65%))" : fm.a }} />
                         <span className="font-semibold text-foreground">{[...FIGHTERS, ...QUESTERS].find((f) => f.id === fm.power)?.name}</span>
                         <span className="ml-auto truncate text-xs text-muted-foreground">{fm.title}</span>
                       </li>
