@@ -125,9 +125,9 @@ const { object } = await generateObject({
 
 A failed AI call must reach the person who pressed the button. The gateway records every failed call for the app builder, who sees it as a card on Needs you under Monitoring; the app's job is the person on screen.
 
-- In a route, catch around the AI call, `console.error` it, and return a discriminable result (`{ ok: false, error }`) — never an empty object with a 200.
+- In a route, catch around the AI call and return `failed("<step>", error, "<plain sentence>")` from `~stencil/errors` — it logs the error and returns a discriminable `{ ok: false, error }` — never an empty object with a 200.
 - On screen, show that error next to the control (inline text with `role="alert"`, or a toast) and leave what the person typed in place. A bare `catch {}` that leaves placeholders showing is a dead button to the person using it.
-- Keep the provider's message out of the UI; it belongs in `console.error` only.
+- Keep the provider's message out of the UI and out of any row the app stores (a job's `error` column shows on a page later); it belongs in `console.error` only, which is where `failed` puts it.
 - A streamed call that is not sent to the browser (a loader or scheduled handler that awaits `result.text`) must pass `onError` to `streamText` or check that the text is non-empty before storing it: a stream error such as `AIOutputLimitError` from `~stencil/ai` goes to `onError`, and the stream still finishes with empty text.
 
 ```ts
@@ -142,8 +142,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     });
     return { ok: true as const, fills: object };
   } catch (error) {
-    console.error("smart fill failed", error);
-    return { ok: false as const, error: "Couldn't fill this in right now — please try again." };
+    return failed("smart fill", error, "Couldn't fill this in right now — please try again.");
   }
 }
 ```
@@ -337,8 +336,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     });
     return { ok: true as const, text, segments, vtt };
   } catch (error) {
-    console.error("transcription failed", error);
-    return { ok: false as const, error: "Couldn't transcribe that right now — please try again." };
+    return failed("transcription", error, "Couldn't transcribe that right now — please try again.");
   }
 }
 ```

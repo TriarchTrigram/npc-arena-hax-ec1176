@@ -330,6 +330,13 @@ means the address was already subscribed, and the page shows the same message wh
 call returned — a different reply for a known address tells any visitor who is on the
 list. Server side only — never from the browser.
 
+- **In a form a visitor submits, pass the action's `request`**: `{ service: "kit", email, name,
+  request }`, and the same on `addToFlodesk`. The call then counts the visitor on the same
+  counter as `limitVisitor` (see `form-protection`): five adds per 10 minutes per service, the
+  rest refused, resolving `false`, so a script cannot flood the list. Never write a counter
+  for it. When the app builder asks for a different number, pass
+  `limit: { max, windowSeconds }`. Leave `request` out in an events handler, where no visitor
+  is behind the call.
 - `name` is the full name. Kit keeps a first name only, and the platform sends the first word.
 - `destinationIds` are ids on the service — for Kit, **tag ids**, up to 20. There is no
   tool yet that lists the account's tags with their ids, so use them only when the builder

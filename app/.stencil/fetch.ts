@@ -1,4 +1,5 @@
 import { BACKEND_BASE, createBackendFetch } from "./backend";
+import { publicUrlProblem } from "./safe-fetch";
 import { FILES_ROUTE, storeImageFromUrl } from "./storage";
 
 export interface FetchedPage {
@@ -64,10 +65,14 @@ export function createFetch(env: Env) {
   return {
     /** Fetch a single URL and return its main content as markdown plus link-card metadata. */
     async page(url: string, options?: FetchPageOptions): Promise<FetchedPage> {
+      // Both page readers read a bare "example.com" as http://, so that is what is vetted and sent.
+      const address = /^[a-z][a-z0-9+.-]*:\/\//i.test(url.trim()) ? url.trim() : `http://${url.trim()}`;
+      const problem = publicUrlProblem(address);
+      if (problem) throw new FetchError(`Fetch failed: ${problem}`);
       const res = await backendFetch(`${BACKEND_BASE}/fetch`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url: address }),
       });
       if (!res.ok) {
         // The proxy's body carries the provider's own status and message; `detail`

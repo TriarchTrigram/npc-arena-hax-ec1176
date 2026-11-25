@@ -35,7 +35,8 @@ for it, so nothing keyed on it can open there.
   own database. Do not create an `app_roles` entity, a `role` column, an `is_admin` flag or an
   admin allow-list: the Users page cannot see those, so the app builder's Role field would
   do nothing. The same goes for a list of beta testers or test accounts: those are app users the
-  app builder adds from the Users page, never a list in code (see `app-users`).
+  app builder adds from the Users page, never a list in code (see `app-users`). A feature that
+  only chosen app users get for now is not a role either: see `feature-rollouts`.
 - **Admin is never derived from something a person can assert.** Never grant admin from an
   email literal, an email domain suffix, a list in a deployment secret or environment variable,
   or to whoever signs up first. Each of those is a race to register, not an authorization check,

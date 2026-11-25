@@ -78,7 +78,7 @@ await email.send({
 - `senderName` is the local-part (e.g. `"notifications"`, `"support"`, `"admin"`); lowercase letters, digits, and hyphens only; defaults to `"noreply"`. The platform builds the full from-address around it — never construct one yourself.
 - `fromName` is the display name — the bold name in the inbox. **Pass it whenever the app sends on behalf of one of its app users** (a photographer's studio emailing parents, a seller emailing a buyer, a coach emailing a client): the recipient knows the studio, not the app, and mail from an unfamiliar name gets marked as spam. The platform shows it as `<fromName> via <app title>` (`Bloom Photography via RENZA`), strips quotes, angle brackets and line breaks, and caps it at 60 characters; leave it out and the inbox shows the app's sender name alone. `senderName` still names the mailbox.
 - Full params: `to`, `cc`, `bcc`, `reply_to` (each a string or array), `subject`, `html` and/or `text`, `senderName`, `fromName`, `headers` (string record), `tags` (`{name, value}[]`).
-- Returns `{ id }`; throws on failure with the backend's error text. That `id` only means the platform accepted the email — a bounce arrives minutes later.
+- Returns `{ id }`; throws on failure with the backend's error text. That text is for `console.error`, never for the screen or a stored row: catch it and return `failed("sending the receipt", err)` from `~stencil/errors`. The `id` only means the platform accepted the email — a bounce arrives minutes later.
 - `email.outcomes({ since? })` lists what became of the app's sends, newest first (500 at most): `{ id, to, subject, status: "delivered" | "bounced" | "complained" | "failed", reason, at }`. When the app must know whether a notification landed (an alert someone pays for, a confirmation), match `id` against it in a later scheduled action rather than trusting `send()` alone.
 
 The app can send at any server-side moment: a welcome email on signup, an order confirmation, a status update, a scheduled weekly digest. Combined with scheduled actions it can also act on mail automatically — auto-replies, digests of what arrived, routing messages into the app's data — without anyone opening a page.
@@ -235,6 +235,7 @@ route("api/internal/email-inbound", "routes/api.internal.email-inbound.tsx"),
 ```tsx
 import type { Route } from "./+types/api.internal.email-inbound";
 import { createDb } from "~stencil/db";
+import { failed } from "~stencil/errors";
 import { eq } from "drizzle-orm";
 import { messages, inboxes } from "~/generated/db-schema";
 
@@ -326,8 +327,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   } catch (err) {
     // A non-2xx tells the platform to retry (and eventually park with evidence),
     // so surface real failures — but never throw past here.
-    console.error(`inbound email ${email.id} failed:`, err);
-    return Response.json({ ok: false, error: "handler failed" }, { status: 500 });
+    return Response.json(failed(`inbound email ${email.id}`, err, "handler failed"), { status: 500 });
   }
 
   return Response.json({ ok: true });
@@ -385,21 +385,25 @@ await email.send({
 
 ## Attachments are never public links
 
-Attachment bytes stay in platform storage — the webhook payload carries only metadata, and each attachment's `path` is an internal, bearer-gated backend path, **not** a URL. You cannot put it in an `<a href>` or `<img src>`. To show an attachment to an app user, fetch the bytes **server-side** with `getAttachment(id, index)` (`id` = the platform email id, `index` = the attachment's position in the payload's `attachments` array) in a resource route of your own and re-serve them:
+Attachment bytes stay in platform storage — the webhook payload carries only metadata, and each attachment's `path` is an internal, bearer-gated backend path, **not** a URL. You cannot put it in an `<a href>` or `<img src>`. To show an attachment to an app user, fetch the bytes **server-side** with `getAttachment(id, index)` (`id` = the platform email id, `index` = the attachment's position in the payload's `attachments` array) in a resource route of your own and re-serve them through `untrustedFileResponse`:
 
 ```tsx
 // app/routes/app.attachment.$id.$index.tsx  (register in routes.ts)
 import type { Route } from "./+types/app.attachment.$id.$index";
 import { createEmail } from "~stencil/email";
+import { untrustedFileResponse } from "~stencil/storage";
 import { requireAuth } from "~stencil/auth/server";
 
 export async function loader({ request, params, context }: Route.LoaderArgs) {
   await requireAuth(request, context.cloudflare.env);
   const email = createEmail(context.cloudflare.env);
   const res = await email.getAttachment(params.id, Number(params.index));
-  return new Response(res.body, { headers: res.headers });
+  // Shows images and PDFs inline, downloads everything else; pass `downloadAs` to always save.
+  return untrustedFileResponse(res.body, res.headers.get("Content-Type"));
 }
 ```
+
+**An attachment is a file a stranger chose.** Anyone can email the app, and an attached web page or SVG opened from the app's own address would run the sender's script as whoever opened it — the app builder reading the inbox, most likely. `untrustedFileResponse` keeps only known-safe types inline and forces the rest to download with type guessing off; never rebuild the response headers yourself, and never copy the upstream `Content-Type` into a `new Response(...)` of your own.
 
 Store the payload's `attachments` metadata in your table (a `json` field) if the UI needs filenames/sizes, and link to *your* route, never to `path`.
 

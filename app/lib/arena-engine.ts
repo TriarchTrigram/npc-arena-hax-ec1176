@@ -2851,10 +2851,10 @@ export function buildBackdrop(): HTMLCanvasElement {
   return c;
 }
 
-function limb(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[], col: string, w: number, flash: boolean) {
+function limb(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[], col: string, w: number, flash: boolean, ink = INK) {
   ctx.beginPath();
   pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
-  ctx.strokeStyle = INK;
+  ctx.strokeStyle = ink;
   ctx.lineWidth = w + 4;
   ctx.stroke();
   ctx.strokeStyle = flash ? "white" : col;
@@ -3053,8 +3053,10 @@ function drawFighterBody(ctx: CanvasRenderingContext2D, g: Game, f: Fighter, o: 
 
   const flash = f.flash > 0;
   const rg = f.alive ? rageOf(f) : null;
-  const col = o.solid ?? (rg ? rg.body : f.def.id === "shift" && f.lastHitBy ? DEF_BY_ID[f.lastHitBy].color : f.def.color);
-  const dark = o.solid ?? shade(col, -16);
+  const col = o.solid ?? (rg ? rg.body : f.def.id === "shift" && f.lastHitBy ? DEF_BY_ID[f.lastHitBy].color : f.def.body ?? f.def.color);
+  const dark = o.solid ?? shade(col, f.def.body && !rg ? 6 : -16);
+  // a fighter with an outline of its own (Turbo's blue) keeps it in every form
+  const ink = (!o.solid && f.def.outline) || INK;
   const deadFade = !f.alive ? clamp(1 - (f.koT - 1.5) / 1.5, 0.45, 1) : 1;
   ctx.globalAlpha = deadFade * (o.alpha ?? 1);
 
@@ -3113,11 +3115,11 @@ function drawFighterBody(ctx: CanvasRenderingContext2D, g: Game, f: Fighter, o: 
   ctx.stroke();
   }
 
-  limb(ctx, [hip, kB, fB], dark, lw, flash);
-  limb(ctx, [shoulder, eB, hB], dark, lw, flash);
-  limb(ctx, [hip, neck], col, lw * 1.35, flash);
-  limb(ctx, [hip, kF, fF], col, lw, flash);
-  limb(ctx, [shoulder, eF, hF], col, lw, flash);
+  limb(ctx, [hip, kB, fB], dark, lw, flash, ink);
+  limb(ctx, [shoulder, eB, hB], dark, lw, flash, ink);
+  limb(ctx, [hip, neck], col, lw * 1.35, flash, ink);
+  limb(ctx, [hip, kF, fF], col, lw, flash, ink);
+  limb(ctx, [shoulder, eF, hF], col, lw, flash, ink);
 
   // power glow on the hand while acting
   if (f.act && f.alive) {
@@ -3141,7 +3143,7 @@ function drawFighterBody(ctx: CanvasRenderingContext2D, g: Game, f: Fighter, o: 
     ctx.arc(hp.x, hp.y, 4.5 * s, 0, Math.PI * 2);
     ctx.fillStyle = flash ? "white" : col;
     ctx.fill();
-    ctx.strokeStyle = INK;
+    ctx.strokeStyle = ink;
     ctx.lineWidth = 2.5 * s;
     ctx.stroke();
   }
@@ -3150,21 +3152,21 @@ function drawFighterBody(ctx: CanvasRenderingContext2D, g: Game, f: Fighter, o: 
   ctx.arc(head.x, head.y, HEAD * s, 0, Math.PI * 2);
   ctx.fillStyle = flash ? "white" : col;
   ctx.fill();
-  ctx.strokeStyle = INK;
+  ctx.strokeStyle = ink;
   ctx.lineWidth = 3 * s;
   ctx.stroke();
   // eye
   const blind = f.status.blind > g.t;
   const ex = head.x + face * 5 * s, ey = head.y - 1.5 * s;
   if (!f.alive) {
-    ctx.strokeStyle = INK;
+    ctx.strokeStyle = ink;
     ctx.lineWidth = 2 * s;
     ctx.beginPath();
     ctx.moveTo(ex - 3 * s, ey - 3 * s); ctx.lineTo(ex + 3 * s, ey + 3 * s);
     ctx.moveTo(ex + 3 * s, ey - 3 * s); ctx.lineTo(ex - 3 * s, ey + 3 * s);
     ctx.stroke();
   } else if (blind) {
-    ctx.strokeStyle = INK;
+    ctx.strokeStyle = ink;
     ctx.lineWidth = 2 * s;
     ctx.beginPath();
     ctx.moveTo(ex - 3.5 * s, ey); ctx.lineTo(ex + 3.5 * s, ey);

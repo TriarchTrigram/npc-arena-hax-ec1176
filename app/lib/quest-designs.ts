@@ -10,10 +10,11 @@
 // Vellum: a paper body with fold creases, a red ink seal on the brow, a long scroll trailing from the shoulders and origami cranes circling.
 // Facet: a cut gem for a head with a crown of crystals, a ridge of crystals down the back, a diamond in the chest splitting light, crystal fists.
 // Sirocco: a wrapped hood and face band with glowing eyes, a scarf that frays into sand, sand pouring from one hand and rings of sand round the legs.
-// Volta (new generation): a mane of plasma swept back, goggles pushed up, big young eyes, a star on the chest and crackling plasma fists.
-// Briar (new generation): a crown of leaves with a flower behind one ear, big young eyes, vines up the limbs and a cape of leaves.
-// Turbo (new generation): swept-back hair, a blue jacket over a white hoodie with the hood down, and a long orange scarf that sways
-// behind him and streams flat when he runs. Super Form turns the jacket and hair gold, Hyper Form pale and shimmering.
+// The new generation are clean stick figures with no hair: their look comes from what they wear and what their power does.
+// Volta (new generation): goggles pushed up, big young eyes, a star on the chest, crackling plasma fists and sparks in orbit.
+// Briar (new generation): big young eyes, a flower on the chest, vines up the limbs and a cape of leaves.
+// Turbo (new generation): a black stick figure outlined in blue (body and outline are set on his fighter), with only a long
+// orange scarf that sways behind him and streams flat when he runs. Super Form turns him gold, Hyper Form pale and shimmering.
 import type { Power } from "./fighters";
 import { drawCrane } from "./move-looks";
 import type { BossRig } from "./boss-designs";
@@ -910,40 +911,13 @@ function siroccoFront(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face
 
 // ---------- Volta (new generation) ----------
 
-/** One spike of plasma hair: a curved flame from the scalp, white at the root, its colour at the tip. */
-function plasmaSpike(ctx: CanvasRenderingContext2D, x: number, y: number, ang: number, len: number, w: number, p: QuestPaint, flick: number) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(ang);
-  const g = ctx.createLinearGradient(0, 0, len, 0);
-  g.addColorStop(0, p.nightmare ? "hsl(0 0% 100%)" : p.b);
-  g.addColorStop(1, al(p.a, 0.2));
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.moveTo(0, -w);
-  ctx.quadraticCurveTo(len * 0.6, -w * 0.6 + flick, len, flick * 1.4);
-  ctx.quadraticCurveTo(len * 0.6, w * 0.6 + flick, 0, w);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-
 function voltaBack(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: number, t: number, alive: boolean, act: QuestAct | undefined, p: QuestPaint) {
   ctx.save();
-  const h = r.head;
-  const back = -face;
-  const flare = act && act.phase === "strike" ? 1.35 : 1;
+  const n = act && act.phase === "strike" ? 7 : 5;
   ctx.globalCompositeOperation = alive ? "lighter" : "source-over";
-  // a wild mane of plasma swept back off the head
-  const spikes: [number, number, number][] = [[-0.5, 26, 5], [-0.15, 32, 5.5], [0.2, 28, 5], [0.55, 20, 4]];
-  spikes.forEach(([a, len, w], i) => {
-    const ang = back > 0 ? a : Math.PI - a;
-    const flick = alive ? Math.sin(t * 13 + i * 1.7) * 2.5 * s : 0;
-    plasmaSpike(ctx, h.x + back * 4 * s, h.y - 6 * s, ang, len * s * flare * (alive ? 1 : 0.5), w * s, p, flick);
-  });
   if (alive) {
-    // sparks orbiting the body like a tiny solar system
-    for (let i = 0; i < 5; i++) {
+    // sparks orbiting the body like a tiny solar system, more of them as a move lands
+    for (let i = 0; i < n; i++) {
       const an = t * (2.4 + i * 0.3) + i * 1.3;
       const cx = r.hip.x + Math.cos(an) * (24 + i * 3) * s, cy = (r.neck.y + r.hip.y) / 2 + Math.sin(an) * 30 * s;
       if (Math.sin(an) > 0) continue;
@@ -973,10 +947,6 @@ function voltaFront(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: 
     ctx.arc(gx, gy, 3.2 * s, 0, TAU);
     ctx.fill();
     ctx.stroke();
-  }
-  // three short spikes of hair standing up in front
-  for (const [dx, a, len] of [[-3, -1.9, 10], [1, -1.55, 13], [5, -1.2, 9]] as const) {
-    plasmaSpike(ctx, h.x + face * dx * s, h.y - 9 * s, face > 0 ? a : Math.PI - a, len * s, 2.4 * s, p, alive ? Math.sin(t * 15 + dx) * 1.2 * s : 0);
   }
   // big bright young eyes
   if (alive) {
@@ -1114,13 +1084,9 @@ function briarFront(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: 
   // a small leaf on each wrist
   leaf(ctx, r.hF.x, r.hF.y, face > 0 ? -0.6 : Math.PI + 0.6, 10 * s, 3.5 * s, fill, vein, s);
   leaf(ctx, r.hB.x, r.hB.y, face > 0 ? -0.9 : Math.PI + 0.9, 9 * s, 3 * s, fill, vein, s);
-  // a crown of leaves for hair
-  for (const [dx, a, len] of [[-7, -2.5, 14], [-3, -2.0, 16], [2, -1.55, 15], [6, -1.1, 13]] as const) {
-    const sway = alive ? Math.sin(t * 2.5 + dx) * 0.08 : 0;
-    leaf(ctx, h.x + face * dx * s, h.y - 7 * s, (face > 0 ? a : Math.PI - a) + sway, len * s, 4.5 * s, fill, vein, s);
-  }
-  // a big flower tucked behind one ear
-  blossom(ctx, h.x - face * 7 * s, h.y - 6 * s, 5.5 * s, p.nightmare ? "hsl(350 90% 40%)" : p.glow, p.nightmare ? "hsl(0 0% 6%)" : "hsl(52 100% 66%)", alive ? t * 0.4 : 0);
+  // a big flower pinned on the chest
+  const fx = r.neck.x + (r.hip.x - r.neck.x) * 0.3, fy = r.neck.y + (r.hip.y - r.neck.y) * 0.3;
+  blossom(ctx, fx, fy, 5.5 * s, p.nightmare ? "hsl(350 90% 40%)" : p.glow, p.nightmare ? "hsl(0 0% 6%)" : "hsl(52 100% 66%)", alive ? t * 0.4 : 0);
   // big young eyes
   if (alive) {
     for (const dx of [2, 6.5]) {
@@ -1189,43 +1155,9 @@ function turboScarf(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: 
   ctx.restore();
 }
 
-function turboBack(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: number, t: number, alive: boolean, p: QuestPaint, vx: number) {
+function turboBack(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: number, t: number, alive: boolean, vx: number) {
   ctx.save();
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  const h = r.head;
-  const back = -face;
-  // the white hood, down, bunched behind the neck
-  ctx.fillStyle = "hsl(220 20% 94%)";
-  ctx.strokeStyle = "hsl(220 15% 70%)";
-  ctx.lineWidth = 1.2 * s;
-  ctx.beginPath();
-  ctx.ellipse(r.neck.x + back * 6 * s, r.neck.y - 1 * s, 8 * s, 6 * s, back * 0.4, 0, TAU);
-  ctx.fill();
-  ctx.stroke();
   turboScarf(ctx, r, s, face, t, alive, vx);
-  // swept-back hair: long spikes off the back of the head, lifting with speed
-  const lift = Math.min(1, Math.abs(vx) / 320) * 0.25;
-  ctx.fillStyle = p.a;
-  ctx.strokeStyle = "hsl(225 50% 16%)";
-  ctx.lineWidth = 1.2 * s;
-  for (const [a, len, w] of [[-0.55, 20, 6], [-0.15, 24, 6.5], [0.25, 19, 5.5]] as const) {
-    const ang = (back > 0 ? a - lift : Math.PI - a + lift) + (alive ? Math.sin(t * 7 + a * 5) * 0.05 : 0.3);
-    const bx = h.x + back * 5 * s, by = h.y - 3 * s;
-    const tx = bx + Math.cos(ang) * len * s, ty = by + Math.sin(ang) * len * s;
-    const nx = -Math.sin(ang) * w * s, ny = Math.cos(ang) * w * s;
-    ctx.beginPath();
-    ctx.moveTo(bx + nx, by + ny);
-    ctx.quadraticCurveTo((bx + tx) / 2 + nx * 0.4, (by + ty) / 2 + ny * 0.4 + 2 * s, tx, ty);
-    ctx.quadraticCurveTo((bx + tx) / 2 - nx * 0.4, (by + ty) / 2 - ny * 0.4, bx - nx, by - ny);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
-  // the back sleeve of the jacket
-  ctx.strokeStyle = p.a;
-  ctx.lineWidth = 7 * s;
-  strokePath(ctx, [r.shoulder, r.eB]);
   ctx.restore();
 }
 
@@ -1234,63 +1166,6 @@ function turboFront(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: 
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   const h = r.head;
-  const trim = "hsl(225 50% 16%)";
-  // the jacket over the torso: a wide panel from the shoulders to just above the hips
-  const dx = r.neck.x - r.hip.x, dy = r.neck.y - r.hip.y, len = Math.hypot(dx, dy) || 1;
-  const nx = -dy / len, ny = dx / len;
-  const top = { x: r.neck.x + (r.hip.x - r.neck.x) * 0.04, y: r.neck.y + (r.hip.y - r.neck.y) * 0.04 };
-  const bot = { x: r.hip.x + dx * 0.02, y: r.hip.y + dy * 0.02 };
-  const wTop = 8.5 * s, wBot = 7.5 * s;
-  ctx.fillStyle = p.a;
-  ctx.strokeStyle = trim;
-  ctx.lineWidth = 1.4 * s;
-  ctx.beginPath();
-  ctx.moveTo(top.x + nx * wTop, top.y + ny * wTop);
-  ctx.lineTo(bot.x + nx * wBot, bot.y + ny * wBot);
-  ctx.lineTo(bot.x - nx * wBot, bot.y - ny * wBot);
-  ctx.lineTo(top.x - nx * wTop, top.y - ny * wTop);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  // the open front: the white hoodie showing down the middle, with its two drawstrings
-  const fx = face * 1.5 * s;
-  ctx.fillStyle = "hsl(220 20% 95%)";
-  ctx.beginPath();
-  ctx.moveTo(top.x + fx + nx * 3 * s, top.y + ny * 3 * s);
-  ctx.lineTo(bot.x + fx + nx * 2.2 * s, bot.y + ny * 2.2 * s);
-  ctx.lineTo(bot.x + fx - nx * 2.2 * s, bot.y - ny * 2.2 * s);
-  ctx.lineTo(top.x + fx - nx * 3 * s, top.y - ny * 3 * s);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = "hsl(220 15% 62%)";
-  ctx.lineWidth = 1 * s;
-  for (const side of [-1, 1]) {
-    const sx = top.x + fx + nx * side * 1.5 * s, sy = top.y + ny * side * 1.5 * s + 3 * s;
-    ctx.beginPath();
-    ctx.moveTo(sx, sy);
-    ctx.lineTo(sx + (alive ? Math.sin(t * 6 + side) * 1 * s : 0), sy + 9 * s);
-    ctx.stroke();
-  }
-  // a white stripe down each side of the jacket
-  ctx.strokeStyle = "hsl(0 0% 100%)";
-  ctx.lineWidth = 1.4 * s;
-  for (const side of [-1, 1]) {
-    ctx.beginPath();
-    ctx.moveTo(top.x + nx * side * 6.5 * s, top.y + ny * side * 6.5 * s);
-    ctx.lineTo(bot.x + nx * side * 5.8 * s, bot.y + ny * side * 5.8 * s);
-    ctx.stroke();
-  }
-  // the front sleeve, with a white cuff
-  ctx.strokeStyle = p.a;
-  ctx.lineWidth = 7 * s;
-  strokePath(ctx, [r.shoulder, r.eF, { x: r.eF.x + (r.hF.x - r.eF.x) * 0.6, y: r.eF.y + (r.hF.y - r.eF.y) * 0.6 }]);
-  ctx.strokeStyle = "hsl(220 20% 95%)";
-  ctx.lineWidth = 7.5 * s;
-  const cx0 = r.eF.x + (r.hF.x - r.eF.x) * 0.6, cy0 = r.eF.y + (r.hF.y - r.eF.y) * 0.6;
-  ctx.beginPath();
-  ctx.moveTo(cx0, cy0);
-  ctx.lineTo(cx0 + (r.hF.x - r.eF.x) * 0.12, cy0 + (r.hF.y - r.eF.y) * 0.12);
-  ctx.stroke();
   // the scarf wrapped round the neck, with its knot at the front
   ctx.strokeStyle = SCARF;
   ctx.lineWidth = 6 * s;
@@ -1302,18 +1177,12 @@ function turboFront(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: 
   ctx.beginPath();
   ctx.arc(r.neck.x + face * 5 * s, r.neck.y + 2 * s, 3 * s, 0, TAU);
   ctx.fill();
-  // a fringe of hair over the brow
-  ctx.fillStyle = p.a;
-  ctx.strokeStyle = trim;
-  ctx.lineWidth = 1.1 * s;
+  // a short tail hanging from the knot, flicking as he moves
+  ctx.strokeStyle = SCARF;
+  ctx.lineWidth = 3.5 * s;
   ctx.beginPath();
-  ctx.moveTo(h.x - face * 9 * s, h.y - 5 * s);
-  ctx.quadraticCurveTo(h.x, h.y - 15 * s, h.x + face * 11 * s, h.y - 6 * s);
-  ctx.lineTo(h.x + face * 6 * s, h.y - 4.5 * s);
-  ctx.lineTo(h.x + face * 4 * s, h.y - 1.5 * s);
-  ctx.lineTo(h.x + face * 1 * s, h.y - 5 * s);
-  ctx.closePath();
-  ctx.fill();
+  ctx.moveTo(r.neck.x + face * 5 * s, r.neck.y + 3 * s);
+  ctx.quadraticCurveTo(r.neck.x + face * 7 * s, r.neck.y + 8 * s, r.neck.x + face * (6 + (alive ? Math.sin(t * 7) * 1.5 : 0)) * s, r.neck.y + 13 * s);
   ctx.stroke();
   // big young eyes, narrowed a little with confidence
   if (alive) {
@@ -1323,13 +1192,13 @@ function turboFront(ctx: CanvasRenderingContext2D, r: BossRig, s: number, face: 
       ctx.beginPath();
       ctx.ellipse(ex, ey, 1.9 * s, 2.3 * s, 0, 0, TAU);
       ctx.fill();
-      ctx.fillStyle = p.nightmare ? p.b : "hsl(205 90% 36%)";
+      ctx.fillStyle = p.nightmare ? p.b : "hsl(212 100% 46%)";
       ctx.beginPath();
       ctx.arc(ex + face * 0.5 * s, ey + 0.3 * s, 1.2 * s, 0, TAU);
       ctx.fill();
     }
-    // a slanted brow over each eye
-    ctx.strokeStyle = trim;
+    // a slanted brow over each eye, in his outline blue
+    ctx.strokeStyle = "hsl(212 100% 62%)";
     ctx.lineWidth = 1.1 * s;
     ctx.beginPath();
     ctx.moveTo(h.x + face * 0.4 * s, h.y - 2.4 * s);
@@ -1356,5 +1225,5 @@ export function drawQuestDesign(
   if (id === "sand") return layer === "back" ? siroccoBack(ctx, r, s, face, t, alive, act, p) : siroccoFront(ctx, r, s, face, t, alive, p);
   if (id === "plasma") return layer === "back" ? voltaBack(ctx, r, s, face, t, alive, act, p) : voltaFront(ctx, r, s, face, t, alive, p);
   if (id === "flora") return layer === "back" ? briarBack(ctx, r, s, face, t, alive, act, p) : briarFront(ctx, r, s, face, t, alive, p);
-  if (id === "chaos") return layer === "back" ? turboBack(ctx, r, s, face, t, alive, p, vx) : turboFront(ctx, r, s, face, t, alive, p);
+  if (id === "chaos") return layer === "back" ? turboBack(ctx, r, s, face, t, alive, vx) : turboFront(ctx, r, s, face, t, alive, p);
 }

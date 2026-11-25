@@ -17,11 +17,42 @@ Use `createStorage` from `~stencil/storage` in loaders and actions only (server-
 
 ## A file from an outsider is untrusted content
 
-Any upload that reaches a public form or a shared upload link came from someone you don't control, and its declared type is just a claim. Treat it as untrusted:
+Any upload that reaches a public form, a shared upload link, a sign-up form or any screen another app user can use came from someone you don't control, and its declared type is just a claim. A web page or an SVG uploaded as a "logo" and shown from the app's own address runs the uploader's script as whoever opens it — another app user, or the app builder in their admin screens. Treat every upload as untrusted:
 
 - **Restrict what you accept.** Give the upload route an `accept` list for the field — an avatar field takes `["image/*"]`, a contract field `["application/pdf"]` — and `handleUpload` refuses the rest before a byte is stored, in a sentence the screen shows. The type is read from the file's first bytes, not from the browser's claim.
 - **A declared size is a claim too.** A `size` the browser sends when an upload starts is for drawing progress and an early refusal, never for a cap or a storage allowance: a client that declared one byte can send gigabytes. `maxBytes` is enforced on the bytes that were stored, at the finish. See **Finish once, measure, then stop accepting bytes**.
-- **Serving is download-by-default.** `serveR2Object` hands back anything outside a fixed safe-media allowlist (images, PDF, audio/video, plain text) as a download with `X-Content-Type-Options: nosniff`, so a file that is secretly a web page can't execute on the app's own origin. You don't add anything for this — but don't build a serving route that reflects the stored content type back yourself, or you reopen the hole.
+- **Storage pins the type.** `put` keeps the declared type only when it is on the safe-media allowlist (images, PDF, audio/video, plain text, captions) and the file's first bytes match it; HTML, SVG, XML, a mislabelled web page and every other type are stored as `application/octet-stream`. A read through `createStorage` reports the same pinned type for a file already stored under another one, so an older web page or SVG comes back as `application/octet-stream` too. So the type you read is never a page type, and SVG is always a download — there is no inline SVG upload on Stencil, so don't promise one; a vector logo is converted to PNG or WebP on the client before upload if it must display.
+- **Every byte leaves storage through one helper.** `serveR2Object` serves the allowlist inline under the stored type, everything else as a download, always with `X-Content-Type-Options: nosniff`. This is the **only** way to return stored bytes, including from your own routes — see *Custom serving routes* below. A route that does `new Response(obj.body)` with `obj.httpMetadata`, `writeHttpMetadata` or a type read from a record reopens the hole, and the security scan flags it.
+
+### Custom serving routes
+
+A feature often wants a file address `/api/files/<key>` does not express — a record id instead of a key, a per-account token, an owner check, a file fetched from somewhere else. Build that route, but end it in the helper: do your lookup, then hand the **key** to `serveR2Object`:
+
+```ts
+// app/routes/api.logo.$id.tsx — id-addressed, owner-checked, still served by the helper
+import type { Route } from "./+types/api.logo.$id";
+import { data } from "~stencil/data";
+import { createStorage, serveR2Object, imageTransformFromRequest } from "~stencil/storage";
+
+export async function loader({ params, request, context }: Route.LoaderArgs) {
+  const env = context.cloudflare.env;
+  const db = await data(request, env);
+  const studio = await db.from("studios").get(params.id); // throws notFound
+  if (!studio.logoKey) throw new Response("Not found", { status: 404 });
+  return serveR2Object(createStorage(env), studio.logoKey, request, {
+    transform: imageTransformFromRequest(request, env),
+  });
+}
+```
+
+Bytes that are not in the app's storage — an inbound email attachment, a file proxied from another host or store — go through `untrustedFileResponse(body, claimedType, { downloadAs? })` from `~stencil/storage`, which applies the same allowlist and nosniff:
+
+```ts
+const upstream = await fetch(sourceUrl);
+return untrustedFileResponse(upstream.body, upstream.headers.get("Content-Type"));
+```
+
+Never write `new Response(bytes, { headers: { "Content-Type": storedType } })` for a file someone else supplied, whatever the route is called.
 
 ---
 

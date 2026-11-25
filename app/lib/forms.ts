@@ -411,7 +411,7 @@ export const PERFECTED_FLAME: Form = {
 // into super emeralds and crash into him again in white and every colour at once (both cutscenes are in the arena engine).
 FORMS.chaos = {
   power: "chaos", kind: "super", title: "SEVEN EMERALDS", at: 0.45, regen: 1.6, dodge: 0.15,
-  blurb: "Seven emeralds circle him, spin faster and faster and crash into him in a burst of golden light. His jacket and hair turn gold and he barely touches the ground.",
+  blurb: "Seven emeralds circle him, spin faster and faster and crash into him in a burst of golden light. His whole body turns gold and he barely touches the ground.",
   body: "hsl(48 100% 58%)", glow: "hsl(52 100% 80%)", a: "hsl(46 100% 56%)", b: "hsl(54 100% 82%)",
   dmg: 1.35, kb: 1.2, cd: 0.72, speed: 1.3, act: 1.2,
   moves: [

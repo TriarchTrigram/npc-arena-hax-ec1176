@@ -93,6 +93,10 @@ export type FighterDef = {
   ability: string;
   color: string;
   glow: string;
+  /** The stick figure's own fill, when it differs from `color` (which still tints its moves, bars and swatches). */
+  body?: string;
+  /** The stick figure's outline, when it is not the usual ink. */
+  outline?: string;
   hp: number;
   speed: number;
   moves: Move[];
@@ -498,7 +502,7 @@ export const QUESTERS: FighterDef[] = [
   {
     id: "chaos", name: "Turbo", power: "Chaos Energy Manipulation", role: "attacker",
     ability: "The fastest of the new generation, and he knows it. Turbo runs on raw chaos energy: spears of it thrown on the move, a dash that breaks the sound barrier and a step that skips him through space. Push him far enough and seven emeralds answer.",
-    color: "hsl(218 88% 52%)", glow: "hsl(28 100% 58%)", hp: 300, speed: 140,
+    color: "hsl(218 88% 52%)", glow: "hsl(28 100% 58%)", body: "hsl(228 24% 9%)", outline: "hsl(212 100% 58%)", hp: 300, speed: 140,
     moves: [
       M({ id: "turbo-jab", name: "Turbo Jab", kind: "melee", anim: "jab", range: 76, cd: 0.7, dmg: 10, kb: 240 }),
       M({ id: "spin-kick", name: "Spin Kick", kind: "melee", anim: "kick", range: 94, cd: 1.1, dmg: 13, kb: 320, lift: -380 }),

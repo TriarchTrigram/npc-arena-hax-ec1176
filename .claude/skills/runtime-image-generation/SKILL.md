@@ -153,19 +153,19 @@ export async function action({ request, context }: Route.ActionArgs) {
 ## Serve the stored image
 
 R2 keys are not public URLs. Serve the bytes through your own resource route so
-access stays under your control:
+access stays under your control, and end it in `serveR2Object`: it shows pictures
+inline, downloads any other stored file, and turns type guessing off. Never return
+the object yourself with its stored type (see the `storage` skill, *Custom serving routes*):
 
 ```ts
 // app/routes/img.$.tsx  →  register as route("img/*", "routes/img.$.tsx")
 import type { Route } from "./+types/img.$";
-import { createStorage } from "~stencil/storage";
+import { createStorage, serveR2Object } from "~stencil/storage";
 
-export async function loader({ params, context }: Route.LoaderArgs) {
-  const obj = await createStorage(context.cloudflare.env).get(params["*"]);
-  if (!obj) throw new Response("Not found", { status: 404 });
-  return new Response(obj.body, {
-    headers: { "Content-Type": obj.httpMetadata?.contentType ?? "image/jpeg" },
-  });
+export async function loader({ params, request, context }: Route.LoaderArgs) {
+  const key = params["*"];
+  if (!key) throw new Response("Not found", { status: 404 });
+  return serveR2Object(createStorage(context.cloudflare.env), key, request);
 }
 ```
 

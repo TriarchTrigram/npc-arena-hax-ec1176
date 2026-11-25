@@ -76,6 +76,11 @@ time (the platform waitlist above is already deduped by address; a write into th
 table keys on `request.headers.get("framer-webhook-submission-id")` with `onConflictDoNothing`). Return normally only once the work is durable: a 200 before the write
 lands is a delivery the sender will never resend.
 
+**Never log the payload or `rawBody`**, whole or in part: a delivery carries the sender's
+customers' names, addresses and emails, and the app's logs are not where they belong. Log
+the event type and the delivery or event id (`console.log("order update", event.type, event.id)`),
+which is all a later look needs to find the delivery in the sender's own log.
+
 For a sender that does not post JSON, or when the route must answer with something other
 than `{ ok: true }`, call `verifyWebhook(request, signature)` yourself: it returns
 `{ ok: true, rawBody, timestamp }` or `{ ok: false, reason, response }` — return the

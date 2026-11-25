@@ -99,18 +99,21 @@ nothing at all. Everything after this section is a recommendation.
 - Scope every read, not just list pages: counts, aggregates, search, exports.
 - Give a user a workspace on first load rather than gating them behind a "create your
   first workspace" screen — mint a personal one and make them owner.
-- Accepting invites by email match on the invitee's next load avoids an accept-link route
-  and any dependency on email delivery — but match only a **verified** address: require
-  `user.emailVerified === true` before granting the seat. `requireAuth` proves there is a
+- Accept an invite only when the invitee presses a button: show a pending invite matched by
+  email as a "Join <workspace>" `<form method="post">`, and do the join in its `action`.
+  That needs no emailed link and no email delivery, but match only a **verified** address:
+  require `user.emailVerified === true` before granting the seat. `requireAuth` proves there is a
   session, not that the account owns its email — password sign-up doesn't verify unless
   the app's **Require email verification** login setting is on (see `login-settings`), so
   without the check whoever registers the invited address first takes the invitee's seat. On match,
   store `user.id` on the membership and authorize by it from then on; the verified-email
   gate is for the one-time linkage, never a blanket requirement on ordinary `user.id`
-  scoping. Sending the invite email is optional polish.
-- Both of the above put writes in a read path, so two loaders on one page can race and
-  mint two workspaces. Acceptable for first-load provisioning; don't extend the pattern
-  to anything higher-frequency.
+  scoping. Sending the invite email is optional polish. An invite link's page renders the
+  same button; its loader never joins anyone.
+- Minting the personal workspace is the one write in a read path, so two loaders on one
+  page can race and mint two workspaces. Mark it `// stencil-loader-write: first-load <why>`
+  on the line above; the build refuses any other write a loader reaches, in a route or in a
+  `~/lib` helper it calls: accepting an invite, granting a role, sending.
 - **Surfaces with no session can't call it.** `getWorkspaceContext` redirects to
   `/login`, so cron handlers, webhooks, and public routes (a QR capture link, a shared
   form) must receive their workspace explicitly — from a token or by looking up the row

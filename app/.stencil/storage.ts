@@ -1,5 +1,6 @@
 import { contentDisposition } from "./files";
 import { createImage } from "./image";
+import { readCapped, safeFetch } from "./safe-fetch";
 
 /** How many times a momentary storage fault is retried, and the pause before
  *  each retry. Kept small so a bucket that is really down still fails fast. */
@@ -525,41 +526,10 @@ export type StoreImageFromUrlResult =
   | { ok: true; key: string; contentType: string; size: number }
   | { ok: false; reason: string };
 
-const REMOTE_IMAGE_MAX_BYTES = TRANSFORM_MAX_SOURCE_BYTES;
-const REMOTE_IMAGE_MAX_REDIRECTS = 5;
-const REMOTE_IMAGE_TIMEOUT_MS = 15_000;
 const NOT_A_PICTURE = "That address didn't return a picture.";
 const TOO_BIG = "That picture is over 20 MB — please use a smaller one.";
 
 const refused = (reason: string): StoreImageFromUrlResult => ({ ok: false, reason });
-
-// The machine itself and private networks; WHATWG URL parsing has already
-// normalised every IPv4 spelling to dotted decimal and bracketed IPv6.
-function isPublicHost(hostname: string): boolean {
-  const host = hostname.toLowerCase().replace(/\.$/, "");
-  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".internal")) {
-    return false;
-  }
-  const v4 = /^(\d+)\.(\d+)\.\d+\.\d+$/.exec(host);
-  if (v4) {
-    const a = Number(v4[1]);
-    const b = Number(v4[2]);
-    return !(
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      (a === 100 && b >= 64 && b < 128) ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b < 32) ||
-      (a === 192 && b === 168)
-    );
-  }
-  if (host.startsWith("[")) {
-    const v6 = host.slice(1, -1);
-    return !(v6 === "::" || v6 === "::1" || v6.startsWith("::ffff:") || /^f[cd]|^fe[89ab]/.test(v6));
-  }
-  return true;
-}
 
 function bytesAt(bytes: Uint8Array, offset: number, text: string): boolean {
   for (let i = 0; i < text.length; i++) {
@@ -579,34 +549,6 @@ export function sniffImageType(bytes: Uint8Array): string | null {
   return null;
 }
 
-// Past `max` the read stops and the byte count so far comes back instead, so a
-// body with no Content-Length still can't make the worker buffer without limit.
-async function readCapped(
-  body: ReadableStream<Uint8Array>,
-  max: number,
-): Promise<Uint8Array | number> {
-  const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > max) {
-      await reader.cancel();
-      return total;
-    }
-    chunks.push(value);
-  }
-  const out = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    out.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return out;
-}
-
 /**
  * Copy a picture from an outside address an app user supplied — pasted, imported
  * from a link or pulled from a feed — into the app's own storage, so other app
@@ -624,50 +566,15 @@ export async function storeImageFromUrl(
   url: string,
   key: string,
 ): Promise<StoreImageFromUrlResult> {
-  let target: URL;
-  try {
-    target = new URL(url.trim());
-  } catch {
-    return refused("That doesn't look like a web address.");
+  const fetched = await safeFetch(url, {
+    maxBytes: TRANSFORM_MAX_SOURCE_BYTES,
+    headers: { Accept: "image/*" },
+  });
+  if (!fetched.ok) {
+    if (fetched.code === "too-big") return refused(TOO_BIG);
+    return refused(fetched.code === "status" ? NOT_A_PICTURE : fetched.reason);
   }
-  let upstream: Response | null = null;
-  for (let hop = 0; hop <= REMOTE_IMAGE_MAX_REDIRECTS && !upstream; hop++) {
-    if (!/^https?:$/.test(target.protocol) || !isPublicHost(target.hostname)) {
-      return refused("Only public http(s) addresses can be used.");
-    }
-    let res: Response;
-    try {
-      res = await fetch(target.toString(), {
-        redirect: "manual",
-        headers: { Accept: "image/*" },
-        signal: AbortSignal.timeout(REMOTE_IMAGE_TIMEOUT_MS),
-      });
-    } catch {
-      return refused("That address couldn't be reached.");
-    }
-    const location = res.headers.get("Location");
-    if (res.status >= 300 && res.status < 400 && location) {
-      await res.body?.cancel();
-      try {
-        target = new URL(location, target);
-      } catch {
-        return refused("That address redirects somewhere invalid.");
-      }
-      continue;
-    }
-    upstream = res;
-  }
-  if (!upstream) return refused("That address redirects too many times.");
-  if (!upstream.ok || !upstream.body) {
-    await upstream.body?.cancel();
-    return refused(NOT_A_PICTURE);
-  }
-  if (Number(upstream.headers.get("Content-Length")) > REMOTE_IMAGE_MAX_BYTES) {
-    await upstream.body.cancel();
-    return refused(TOO_BIG);
-  }
-  const bytes = await readCapped(upstream.body, REMOTE_IMAGE_MAX_BYTES);
-  if (typeof bytes === "number") return refused(TOO_BIG);
+  const { bytes } = fetched;
   const contentType = sniffImageType(bytes);
   if (!contentType) return refused(NOT_A_PICTURE);
   await storage.put(key, bytes, { httpMetadata: { contentType } });

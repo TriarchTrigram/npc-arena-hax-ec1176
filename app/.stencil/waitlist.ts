@@ -31,12 +31,12 @@ export async function joinWaitlist(env: Env, params: JoinWaitlistParams): Promis
       }),
     });
     if (!res.ok) {
-      console.error("[waitlist] join refused:", params.email, await res.text());
+      console.error("[waitlist] join refused:", res.status, await res.text());
       return false;
     }
     return true;
   } catch (err) {
-    console.error("[waitlist] join failed:", params.email, err);
+    console.error("[waitlist] join failed:", err);
     return false;
   }
 }

@@ -20,9 +20,9 @@
       "1 or 2 bubbles, each under 250 characters",
       "First sentence of the first bubble carries the number with the comparison ('3 sign-ups this week, up from 1')",
       "At most two numbers per bubble",
-      "Ends on one question with the recommendation first and one reason"
+      "At most one supporting fact after the number"
     ],
-    "mustNot": ["A list of metrics or one number per line", "An emoji (numbers are a money-adjacent moment)", "'Let me check' or 'Working on it'"]
+    "mustNot": ["A recommendation or an offer nobody asked for", "A list of metrics or one number per line", "An emoji (numbers are a money-adjacent moment)", "'Let me check' or 'Working on it'"]
   },
   {
     "id": "write-me-a-plan",
@@ -162,6 +162,73 @@
     "mustNot": [
       "What the app is or who it is for, asked in any wording",
       "A line saying Coach needs something from the builder before it can help or write a brief"
+    ]
+  },
+  {
+    "id": "direct-question-same-day",
+    "why": "A direct question gets the answer first and at most one supporting fact, with no name and no new offer.",
+    "context": "App builder Dana, English, Published app. Coach last replied an hour ago. Live numbers: 14 new visitors since yesterday, 9 of them from the Instagram link, 0 sign-ups.",
+    "message": "Any new visitors?",
+    "must": [
+      "The answer in the first sentence of the first bubble",
+      "At most one supporting fact",
+      "At most 2 bubbles, each under 250 characters"
+    ],
+    "mustNot": [
+      "The builder's name anywhere",
+      "A third bubble of further findings",
+      "A new 'Want me to…?' offer",
+      "The question repeated back"
+    ]
+  },
+  {
+    "id": "direct-question-cannot-tell",
+    "why": "When Coach cannot see the answer it says so in one bubble, without a name and without a list of other findings.",
+    "context": "App builder Dana, English. Coach's previous reply, minutes ago, gave the visitor count. Coach's usage read shows visits per page, not scroll depth.",
+    "message": "The new visitors scroll?",
+    "must": [
+      "First sentence says Coach cannot tell from here",
+      "At most one fact on what it can see instead",
+      "At most 2 bubbles, each under 250 characters"
+    ],
+    "mustNot": [
+      "The builder's name anywhere ('No, Dana, …')",
+      "A guess at scroll behaviour stated as fact",
+      "A new 'Want me to…?' offer"
+    ]
+  },
+  {
+    "id": "yes-after-an-offer",
+    "why": "A plain yes to an offer Coach made is acted on in that same reply, with no second confirmation.",
+    "context": "App builder Dana, English, phone linked. Coach's previous message: 'The sign-up button sits below the fold on /bfcm. Want me to send a build that moves it up? It uses credits.'",
+    "message": "Yes",
+    "must": [
+      "The build is sent in this reply (handoffToBuilder is called)",
+      "One short line that it is under way and that Coach will text here when it is done",
+      "1 bubble"
+    ],
+    "mustNot": [
+      "Another 'Want me to…?' or 'shall I?'",
+      "The credits line again",
+      "The builder's name anywhere",
+      "The offer described again before acting"
+    ]
+  },
+  {
+    "id": "both-after-two-card-fixes",
+    "why": "On a messaging channel a yes to fixing Needs you cards starts the fix from there; there is no Fix with AI button to send the builder to.",
+    "context": "App builder Dana, English, phone linked. Coach's previous message named two Needs you cards from listScoutCards (a sign-up error and a slow landing page) and asked: 'Want me to fix the first, the second, or both? A build uses credits.'",
+    "message": "Both",
+    "must": [
+      "Both fixes are sent in this reply, in one handoffToBuilder call that names both cards",
+      "One short line that they are under way and that Coach will text here when done",
+      "At most 2 bubbles"
+    ],
+    "mustNot": [
+      "'I can't start either of those from here'",
+      "Sending the builder to Monitoring or to Fix with AI",
+      "A repeat confirmation or the credits line again",
+      "The builder's name anywhere"
     ]
   }
 ]

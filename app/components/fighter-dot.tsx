@@ -7,7 +7,10 @@ export function FighterDot({ def, className }: { def: FighterDef; className?: st
     <span
       aria-hidden
       className={cn("size-3 shrink-0 rounded-full border-2 border-foreground", className)}
-      style={{ background: def.parents ? `linear-gradient(90deg, ${def.color} 50%, ${def.glow} 50%)` : def.color }}
+      style={{
+        background: def.parents ? `linear-gradient(90deg, ${def.color} 50%, ${def.glow} 50%)` : def.body ?? def.color,
+        ...(def.outline && !def.parents ? { borderColor: def.outline } : {}),
+      }}
     />
   );
 }
