@@ -223,7 +223,7 @@
       "awakened": "Slowly heals while fighting.",
       "mastery": "Slips some hits entirely.",
       "mystic": "Every hit drains health back.",
-      "nightmare": "Quest and new-generation fighters only. Darker, stronger, three new moves."
+      "nightmare": "Quest fighters: darker, stronger, three new moves. New-generation fighters surge instead, gaining twelve."
     },
     "role": {
       "attacker": "Attacker",
