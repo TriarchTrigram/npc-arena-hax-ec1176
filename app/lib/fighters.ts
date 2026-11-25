@@ -1,5 +1,6 @@
 // The 16 fighters, the 9 quest fighters, the 3 new-generation fighters and their power moves. Shared by the arena engine and the Fighters page.
 import { BOSSES, type BossId } from "./bosses";
+import { borrowLook, type PShape } from "./move-looks";
 
 export type Power =
   | "pyro" | "cryo" | "electro" | "terra" | "aero" | "hydro" | "umbra" | "lux"
@@ -114,7 +115,26 @@ export type Gear = "scarf" | "cape" | "headband" | "mask" | "none";
 export type Build = "small" | "regular" | "tall";
 /** Which of your powers' colours the body takes: the main colour, the glow, or black with a glowing outline. */
 export type Shade = "main" | "glow" | "dark";
-export type CustomSpec = { name: string; powers: Power[]; gear: Gear; build: Build; shade: Shade };
+/** The character sheet. `powers` are the game's powers you picked; `own` is a power you invented, always your main one. */
+export type CustomSpec = { name: string; powers: Power[]; gear: Gear; build: Build; shade: Shade; own?: OwnPower };
+
+/** A power you typed in and the AI made up. Its moves each play like one of the 16 fighters' moves, drawn in its own colours. */
+export type OwnPower = {
+  id: string;
+  name: string;
+  /** One short word its signature moves are named with. */
+  word: string;
+  about: string;
+  /** The game element it sounds and arrives like. */
+  base: Power;
+  role: Role;
+  color: string;
+  glow: string;
+  spark: PShape;
+  /** The effect its moves leave; null when it leaves none. */
+  status: StatusEffect | null;
+  moves: { name: string; from: string }[];
+};
 
 const M = (m: Omit<Move, "wind" | "act" | "rec"> & Partial<Pick<Move, "wind" | "act" | "rec">>): Move => ({
   wind: 0.18,
@@ -653,10 +673,65 @@ export function withTeamAttack(self: Power, partner: Power): FighterDef {
   return { ...D, moves: [...D.moves, move] };
 }
 
+// ---------- A power you invented ----------
+// The AI names it, colours it and picks, for each of its moves, which of the 16 fighters' moves it plays like.
+// The move keeps that move's numbers (so it stays fair) and borrows its drawing in the invented power's colours.
+
+export const OWN_SPARKS: PShape[] = ["dot", "spark", "shard", "chunk", "ring", "plus", "smoke", "ember", "flake", "drop", "leaf", "petal", "bubble", "bolt", "glyph", "pixel", "star", "dust"];
+export const STATUSES: StatusEffect[] = ["burn", "slow", "stun", "poison", "blind", "freeze"];
+export const ROLES: Role[] = ["attacker", "control", "tank", "support", "trickster"];
+export const MAX_OWN_MOVES = 6;
+/** The moves an invented power may play like: the 16 fighters' own, minus the copying one. */
+export const BORROWABLE: Move[] = FIGHTERS.flatMap((f) => f.moves.filter((m) => m.kind !== "mimic").map((m) => ({ ...m, power: f.id })));
+const BORROW_BY_ID = new Map(BORROWABLE.map((m) => [m.id, m]));
+const HSL = /^hsl\(\d{1,3}(\.\d+)? \d{1,3}(\.\d+)?% \d{1,3}(\.\d+)?%\)$/;
+const tidy = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
+
+/** A tidy copy of an invented power, or null when it is not one. */
+export function cleanOwn(raw: unknown): OwnPower | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const id = tidy(r.id, 24).replace(/[^a-z0-9]/g, "");
+  const name = tidy(r.name, 24);
+  const base = typeof r.base === "string" && isPower(r.base) && !QUEST_IDS.has(r.base) ? r.base : null;
+  const color = tidy(r.color, 40), glow = tidy(r.glow, 40);
+  const moves = (Array.isArray(r.moves) ? r.moves : [])
+    .map((m) => ({ name: tidy((m as Record<string, unknown>)?.name, 26), from: tidy((m as Record<string, unknown>)?.from, 40) }))
+    .filter((m) => m.name && BORROW_BY_ID.has(m.from))
+    .slice(0, MAX_OWN_MOVES);
+  if (!id || !name || !base || !HSL.test(color) || !HSL.test(glow) || moves.length === 0) return null;
+  return {
+    id,
+    name,
+    word: tidy(r.word, 12) || name.split(" ")[0],
+    about: tidy(r.about, 120),
+    base,
+    role: ROLES.includes(r.role as Role) ? (r.role as Role) : DEF_BY_ID[base].role,
+    color,
+    glow,
+    spark: OWN_SPARKS.includes(r.spark as PShape) ? (r.spark as PShape) : "spark",
+    status: STATUSES.includes(r.status as StatusEffect) ? (r.status as StatusEffect) : null,
+    moves,
+  };
+}
+
+/** The invented power's moves: each one plays like the move it borrows, under its new name, in its new colours. */
+function ownMoves(own: OwnPower): Move[] {
+  return own.moves.map((om, i) => {
+    const from = BORROW_BY_ID.get(om.from)!;
+    const id = `own-${own.id}-${i}`;
+    borrowLook(id, from.id, own.color, own.glow, own.spark);
+    // its own effect replaces the borrowed one; a lingering field never stuns, or the stun would never wear off
+    const status = own.status && from.status ? (from.kind === "zone" && own.status === "stun" ? "slow" : own.status) : undefined;
+    return { ...from, id, name: om.name, power: own.base, status, statusDur: status ? from.statusDur : undefined };
+  });
+}
+
 // ---------- Your own fighter (Free World's character creator) ----------
 // The powers decide everything that is not a choice of look: the first power is the main one (its colour, voice,
 // role and stance), the second lends its glow, and each power brings some of its own fighter's moves, drawn in its
-// element. Two signature moves mix the first two powers (or double down on a single one).
+// element. Two signature moves mix the first two powers (or double down on a single one). A power you invented
+// is always the main one: its colours and role lead, and it sounds and arrives like the game element it is closest to.
 
 export const GEARS: Gear[] = ["scarf", "cape", "headband", "mask", "none"];
 export const BUILDS: Build[] = ["small", "regular", "tall"];
@@ -667,22 +742,37 @@ const ROLE_HP: Record<Role, number> = { attacker: 100, control: 100, tank: 120, 
 const BUILD_HP: Record<Build, number> = { small: -8, regular: 0, tall: 10 };
 const BUILD_SPEED: Record<Build, number> = { small: 8, regular: 0, tall: -6 };
 
-function signatureMoves(a: Power, b: Power): Move[] {
+function signatureMoves(a: Power, b: Power, own?: OwnPower): Move[] {
   const wa = WINGS[a], wb = WINGS[b];
   const stA = wa.status ? { status: wa.status, statusDur: wa.statusDur } : {};
   const stB = wb.status ? { status: wb.status, statusDur: wb.statusDur } : {};
   const one = a === b;
-  return [
+  const moves = [
     M({ id: `sig-comet-${a}-${b}`, name: one ? `${wa.word} Comet` : `${wa.word} ${wb.word} Comet`, kind: "projectile", anim: "cast", power: one ? a : b, range: 580, minRange: 80, cd: 3.2, dmg: 13, speed: 560, size: 16, shape: wb.shape, pierce: true, kb: 260, wind: 0.25, ...stB }),
     M({ id: `sig-nova-${a}-${b}`, name: one ? `${wa.word} Nova` : `${wb.word} ${wa.word} Nova`, kind: "burst", anim: "slam", power: a, range: 150, cd: 6.5, dmg: 15, radius: 165, kb: 400, lift: -320, heal: wa.heal ?? wb.heal, wind: 0.3, rec: 0.35, ...stA }),
   ];
+  if (!own) return moves;
+  // an invented power names both and draws them in its colours, borrowing a shot and a blast of the element it leans on
+  const word = own.word;
+  const [comet, nova] = moves;
+  const cometId = `own-${own.id}-comet-${b}`, novaId = `own-${own.id}-nova-${b}`;
+  const shot = DEF_BY_ID[own.base].moves.find((m) => m.kind === "projectile") ?? DEF_BY_ID.pyro.moves[1];
+  const blast = DEF_BY_ID[own.base].moves.find((m) => m.kind === "burst") ?? DEF_BY_ID.pyro.moves[3];
+  borrowLook(cometId, shot.id, own.color, own.glow, own.spark);
+  borrowLook(novaId, blast.id, own.color, own.glow, own.spark);
+  const ownSt = own.status ? { status: own.status, statusDur: own.status === "stun" ? 0.25 : 1.5 } : {};
+  return [
+    { ...comet, id: cometId, name: one ? `${word} Comet` : `${word} ${wb.word} Comet`, power: one ? a : b, ...(one ? ownSt : {}) },
+    { ...nova, id: novaId, name: one ? `${word} Nova` : `${wb.word} ${word} Nova`, power: a, ...ownSt },
+  ];
 }
 
-/** A tidy copy of a character: a real name, one to three different powers, known look choices. Null when it has no power. */
+/** A tidy copy of a character: a real name, one to three different powers (an invented one counts), known look choices. Null when it has no power. */
 export function cleanSpec(raw: Partial<CustomSpec> | null | undefined): CustomSpec | null {
   if (!raw) return null;
-  const powers = [...new Set((Array.isArray(raw.powers) ? raw.powers : []).filter((p): p is Power => typeof p === "string" && isPower(p)))].slice(0, MAX_CUSTOM_POWERS);
-  if (powers.length === 0) return null;
+  const own = cleanOwn(raw.own) ?? undefined;
+  const powers = [...new Set((Array.isArray(raw.powers) ? raw.powers : []).filter((p): p is Power => typeof p === "string" && isPower(p)))].slice(0, MAX_CUSTOM_POWERS - (own ? 1 : 0));
+  if (powers.length === 0 && !own) return null;
   const name = (typeof raw.name === "string" ? raw.name : "").replace(/\s+/g, " ").trim().slice(0, MAX_NAME);
   return {
     name,
@@ -690,50 +780,104 @@ export function cleanSpec(raw: Partial<CustomSpec> | null | undefined): CustomSp
     gear: GEARS.includes(raw.gear as Gear) ? (raw.gear as Gear) : "scarf",
     build: BUILDS.includes(raw.build as Build) ? (raw.build as Build) : "regular",
     shade: SHADES.includes(raw.shade as Shade) ? (raw.shade as Shade) : "main",
+    ...(own ? { own } : {}),
   };
 }
 
+/** The game elements behind a character, in order: an invented power's own element first, then the picked powers. */
+export function customElements(spec: CustomSpec): Power[] {
+  return spec.own ? [spec.own.base, ...spec.powers] : spec.powers;
+}
+
+/** How many powers a character has, an invented one included. */
+export const powerCount = (spec: CustomSpec) => spec.powers.length + (spec.own ? 1 : 0);
+
 /** The fighter a character sheet makes. `fallbackName` stands in while the name is blank. */
 export function customOf(spec: CustomSpec, fallbackName = "You"): FighterDef {
-  const [a, b = a] = spec.powers;
+  const own = spec.own;
+  const els = customElements(spec);
+  const [a, b = a] = els;
   const A = DEF_BY_ID[a], B = DEF_BY_ID[b];
-  const per = spec.powers.length === 1 ? 6 : spec.powers.length === 2 ? 3 : 2;
-  const own = spec.powers.flatMap((p) => DEF_BY_ID[p].moves.slice(0, per).map((m) => (p === a ? m : { ...m, power: p })));
-  const speed = Math.round(spec.powers.reduce((s, p) => s + DEF_BY_ID[p].speed, 0) / spec.powers.length) + BUILD_SPEED[spec.build];
+  const count = els.length;
+  const per = count === 1 ? 6 : count === 2 ? 3 : 2;
+  const picked = spec.powers.flatMap((p) => DEF_BY_ID[p].moves.slice(0, per).map((m) => (!own && p === a ? m : { ...m, power: p })));
+  const moves = own ? [...ownMoves(own).slice(0, per), ...picked] : picked;
+  const speed = Math.round(els.reduce((s, p) => s + DEF_BY_ID[p].speed, 0) / count) + BUILD_SPEED[spec.build];
+  const names = [...(own ? [own.name] : []), ...spec.powers.map((p) => DEF_BY_ID[p].power)];
+  const color = own ? own.color : A.color;
+  const glow = own && spec.powers.length === 0 ? own.glow : B.glow;
+  const mainGlow = own ? own.glow : A.glow;
+  const role = own ? own.role : A.role;
   const dark = "hsl(250 22% 10%)";
   return {
     ...A,
     name: spec.name || fallbackName,
-    power: spec.powers.map((p) => DEF_BY_ID[p].power).join(", "),
-    ability: spec.powers.length === 1 ? `Made by you, with ${A.power}.` : `Made by you, with ${spec.powers.map((p) => DEF_BY_ID[p].power).join(" and ")}.`,
-    color: A.color,
-    glow: B.glow,
-    body: spec.shade === "glow" ? A.glow : spec.shade === "dark" ? dark : undefined,
-    outline: spec.shade === "dark" ? A.color : undefined,
-    hp: ROLE_HP[A.role] + BUILD_HP[spec.build],
+    power: names.join(", "),
+    role,
+    ability: names.length === 1 ? `Made by you, with ${names[0]}.` : `Made by you, with ${names.join(" and ")}.`,
+    color,
+    glow,
+    body: spec.shade === "glow" ? mainGlow : spec.shade === "dark" ? dark : undefined,
+    outline: spec.shade === "dark" ? color : undefined,
+    hp: ROLE_HP[role] + BUILD_HP[spec.build],
     speed,
-    moves: [...own, ...signatureMoves(a, b)],
+    moves: [...moves, ...signatureMoves(a, b, own)],
     parents: undefined,
     boss: undefined,
     custom: spec,
   };
 }
 
-/** The roster id your fighter is picked by. The whole sheet rides in it, so any screen can rebuild the fighter. */
+// Invented powers are kept in this browser by id, so a roster id that names one can rebuild it on any screen.
+const OWN_KEY = "npc-arena-own-powers";
+const OWN_KEEP = 12;
+const ownById = new Map<string, OwnPower>();
+let ownLoaded = false;
+function loadOwn() {
+  if (ownLoaded || typeof localStorage === "undefined") return;
+  ownLoaded = true;
+  try {
+    const list = JSON.parse(localStorage.getItem(OWN_KEY) ?? "[]");
+    for (const raw of Array.isArray(list) ? list : []) {
+      const p = cleanOwn(raw);
+      if (p && !ownById.has(p.id)) ownById.set(p.id, p);
+    }
+  } catch {
+    // nothing kept
+  }
+}
+/** Keep an invented power in this browser (the newest dozen are kept). */
+export function rememberOwnPower(p: OwnPower) {
+  loadOwn();
+  ownById.delete(p.id);
+  ownById.set(p.id, p);
+  try {
+    localStorage.setItem(OWN_KEY, JSON.stringify([...ownById.values()].slice(-OWN_KEEP)));
+  } catch {
+    // not kept if storage is blocked
+  }
+}
+function ownPowerById(id: string): OwnPower | undefined {
+  loadOwn();
+  return ownById.get(id);
+}
+
+/** The roster id your fighter is picked by. The whole sheet rides in it (an invented power by its id), so any screen can rebuild the fighter. */
 export function customKey(spec: CustomSpec): RosterId {
-  return ["me", encodeURIComponent(spec.name), spec.powers.join("."), spec.gear, spec.build, spec.shade].join("|");
+  return ["me", encodeURIComponent(spec.name), spec.powers.join("."), spec.gear, spec.build, spec.shade, ...(spec.own ? [spec.own.id] : [])].join("|");
 }
 export const isCustomKey = (id: string) => id.startsWith("me|");
 function parseCustomKey(id: string): CustomSpec | null {
   if (!isCustomKey(id)) return null;
-  const [, name, powers, gear, build, shade] = id.split("|");
+  const [, name, powers, gear, build, shade, ownId] = id.split("|");
   let decoded = "";
   try {
     decoded = decodeURIComponent(name ?? "");
   } catch {
     decoded = "";
   }
-  return cleanSpec({ name: decoded, powers: (powers ?? "").split(".") as Power[], gear: gear as Gear, build: build as Build, shade: shade as Shade });
+  const own = ownId ? ownPowerById(ownId) : undefined;
+  return cleanSpec({ name: decoded, powers: (powers ?? "").split(".").filter(Boolean) as Power[], gear: gear as Gear, build: build as Build, shade: shade as Shade, own });
 }
 
 // ---------- Roster ids ----------

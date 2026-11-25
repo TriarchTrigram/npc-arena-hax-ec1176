@@ -499,6 +499,13 @@ for (const [id, lk] of Object.entries(FORM_LOOKS)) {
 /** The signature drawing a move uses: its own, or the one it borrows. */
 const sigOf = (id: string) => LOOKS[id]?.sig ?? id;
 
+/** A power you invented in the character creator: each of its moves borrows another move's drawing, in its own colours and particles. */
+export function borrowLook(id: string, from: string, a: string, b: string, p?: PShape) {
+  const base = LOOKS[from];
+  if (!base || LOOKS[id]?.a === a && LOOKS[id]?.b === b && LOOKS[id]?.p === (p ?? base.p)) return;
+  LOOKS[id] = { ...base, a, b, p: p ?? base.p, sig: sigOf(from) };
+}
+
 /** A one-off effect: a move's signature when it fires (hit = false) or its mark on whoever it struck (hit = true). */
 export type Fx = { id: string; hit: boolean; x: number; y: number; dir: number; size: number; life: number; max: number; seed: number; reach: number; tint?: Tint };
 

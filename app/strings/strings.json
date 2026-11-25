@@ -718,6 +718,25 @@
     "movesCount": "{{count}} moves",
     "save": "Save character",
     "needName": "Give your character a name to save it.",
-    "savedNote": "Saved. {{name}} is walking as you in Free World and can be picked in the arena."
+    "savedNote": "Saved. {{name}} is walking as you in Free World and can be picked in the arena.",
+    "own": {
+      "title": "Your own power",
+      "hint": "Type any power the game doesn't have and the AI turns it into a real one, with its own colours, effects and moves. It becomes your main power.",
+      "label": "Power idea",
+      "placeholder": "e.g. storm piano, magnet bees, shadow ink",
+      "make": "Make it",
+      "making": "Making your power…",
+      "remake": "Make a new one",
+      "remove": "Remove",
+      "removeAria": "Remove {{name}}",
+      "soundsLike": "Sounds and arrives like {{power}}",
+      "replaceNote": "Making a power takes one of your 3 slots, so your last picked power will be dropped.",
+      "error": {
+        "short": "Type a power idea of at least 2 letters.",
+        "busy": "That's a lot of powers in a short time. Wait a few minutes and try again.",
+        "refused": "That one can't be a power here. Try a different idea.",
+        "failed": "The power couldn't be made right now. Try again."
+      }
+    }
   }
 }

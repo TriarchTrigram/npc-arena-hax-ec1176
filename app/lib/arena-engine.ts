@@ -1,5 +1,5 @@
 // Side-view stickman fight engine for the arena canvas. Runs entirely in the browser.
-import { DEF_BY_ID, isNewGen, isQuester, juggernautOf, rosterIdOf, type Anim, type BossDesign, type FighterDef, type Move, type Power, type StatusEffect } from "./fighters";
+import { DEF_BY_ID, customElements, isNewGen, isQuester, juggernautOf, rosterIdOf, type Anim, type BossDesign, type FighterDef, type Move, type Power, type StatusEffect } from "./fighters";
 import type { Sfx } from "./arena-sound";
 import { drawMarks, drawFocus, drawBars, drawNameCards, drawCutIn, MARK_LIFE, CUTIN_LEN, type Mark, type CutIn, type Focus, type NameCard } from "./arena-cinema";
 import { INTROS, BOSS_INTROS, fusionIntro, INTRO_LEN, INTRO_ARRIVED, type IntroBurst, type IntroPose, type IntroSpec } from "./spawn-intros";
@@ -167,7 +167,7 @@ function idlePose(f: Fighter, gt: number): Pose {
   if (f.def.custom) {
     const hz = CUSTOM_IDLE_HZ[f.def.role];
     const b = Math.sin(gt * hz + f.key), c = Math.cos(gt * hz + f.key);
-    return { ...st, t: st.t + b * 0.03, aF2: st.aF2 + b * 0.08, aB2: st.aB2 + (f.def.custom.powers.length > 1 ? c : b) * 0.08, lF1: st.lF1 + b * 0.03, lB1: st.lB1 - b * 0.03 };
+    return { ...st, t: st.t + b * 0.03, aF2: st.aF2 + b * 0.08, aB2: st.aB2 + (customElements(f.def.custom).length > 1 ? c : b) * 0.08, lF1: st.lF1 + b * 0.03, lB1: st.lB1 - b * 0.03 };
   }
   if (f.def.parents) {
     // two powers pulsing in turn: one hand, then the other
@@ -194,7 +194,7 @@ const fusionCache = new Map<string, IntroSpec>();
 function introOf(def: FighterDef): IntroSpec {
   if (def.boss) return BOSS_INTROS[def.boss];
   // the fighter you made: with two powers or more, the first two arrive fused like a hybrid's
-  const two = def.parents ?? (def.custom && def.custom.powers.length > 1 ? [def.custom.powers[0], def.custom.powers[1]] as const : null);
+  const two = def.parents ?? (def.custom && customElements(def.custom).length > 1 ? [customElements(def.custom)[0], customElements(def.custom)[1]] as const : null);
   if (two) {
     const [a, b] = two;
     const key = a + "+" + b;
@@ -1718,7 +1718,7 @@ function stepIntro(g: Game, dt: number) {
       // a hybrid arrives with both of its parents' voices
       if (f.def.parents && f.def.parents[1] !== f.def.id) sfx(g, { k: "intro", power: f.def.parents[1] });
       // the fighter you made arrives with its second power's voice too
-      const second = f.def.custom?.powers[1];
+      const second = f.def.custom ? customElements(f.def.custom)[1] : undefined;
       if (second) sfx(g, { k: "intro", power: second });
       g.shake = Math.max(g.shake, sp.shake * (g.duel ? 1 : 0.6));
       if (!g.preview && !g.demo && g.fighters.length <= 4) g.focus.push({ x: f.x, y: f.y - 55 * f.scale, t: 0, max: 0.45, seed: Math.random() * 100, color: f.def.glow });

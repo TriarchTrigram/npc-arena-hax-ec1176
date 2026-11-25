@@ -10,6 +10,8 @@ export default [
   index("routes/home.tsx"),
   route("roster", "routes/roster.tsx"),
   route("quests", "routes/quests.tsx"),
+  // The character creator's "Your own power": the AI designs a power someone typed in.
+  route("api/own-power", "routes/api.own-power.tsx"),
   // Trusted route the platform calls to run recurring actions (bearer-gated).
   // Keep it registered at this path.
   route("api/internal/scheduled", "routes/api.internal.scheduled.tsx"),

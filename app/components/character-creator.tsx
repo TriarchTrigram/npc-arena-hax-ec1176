@@ -1,8 +1,9 @@
 // Free World's character creator: name your stick figure, pick up to three powers, then choose what it wears,
 // how tall it stands and which of its powers' colours it takes. The powers decide the rest (colours, stance,
 // entrance, effects and moves), and the preview shows the fighter breathing in the stance they give it.
-import { useEffect, useMemo, useRef, useState } from "react";
-import { PiFloppyDiskBold } from "react-icons/pi";
+// "Your own power" sends a typed idea to the AI, which designs a power the game doesn't have; it becomes the main power.
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { PiFloppyDiskBold, PiSparkleBold, PiXBold } from "react-icons/pi";
 import { Text, useString } from "~stencil/ui/strings";
 import type { StringKey } from "~stencil/types/strings";
 import { Button } from "~/components/ui/button";
@@ -12,8 +13,8 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetTit
 import { FighterDot } from "~/components/fighter-dot";
 import { cn } from "~/lib/utils";
 import {
-  BUILDS, DEF_BY_ID, GEARS, MAX_CUSTOM_POWERS, MAX_NAME, SHADES, customOf,
-  type CustomSpec, type Power, type RosterId,
+  BUILDS, DEF_BY_ID, GEARS, MAX_CUSTOM_POWERS, MAX_NAME, SHADES, cleanOwn, customOf, powerCount,
+  type CustomSpec, type FighterDef, type OwnPower, type Power, type RosterId,
 } from "~/lib/fighters";
 import { GROUND, newGame, strollPose, drawStroller, type Game } from "~/lib/arena-engine";
 import { saveMyFighter } from "~/lib/my-fighter";
@@ -26,7 +27,7 @@ const PH = 260;
 function Preview({ spec, fallbackName }: { spec: CustomSpec; fallbackName: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const aria = useString("creator.previewAria");
-  const key = [spec.powers.join("."), spec.gear, spec.build, spec.shade].join("|");
+  const key = [spec.powers.join("."), spec.gear, spec.build, spec.shade, spec.own?.id ?? ""].join("|");
   useEffect(() => {
     const canvas = ref.current;
     const ctx = canvas?.getContext("2d");
@@ -106,6 +107,100 @@ function Heading({ id, hint }: { id: StringKey; hint?: StringKey }) {
   );
 }
 
+type OwnError = "short" | "busy" | "refused" | "failed";
+const OWN_ERRORS: OwnError[] = ["short", "busy", "refused", "failed"];
+
+/** The swatch an invented power is drawn with. */
+const ownDot = (own: OwnPower): FighterDef => ({ ...DEF_BY_ID[own.base], color: own.color, glow: own.glow, body: undefined, outline: undefined });
+
+/** Type a power idea; the AI turns it into a power with its own colours, effects and moves. */
+function OwnPowerBox({ own, willDrop, onMade, onRemove }: {
+  own: OwnPower | undefined;
+  willDrop: boolean;
+  onMade: (p: OwnPower) => void;
+  onRemove: () => void;
+}) {
+  const [idea, setIdea] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<OwnError | null>(null);
+  const placeholder = useString("creator.own.placeholder");
+  const removeAria = useString("creator.own.removeAria").replace("{{name}}", own?.name ?? "");
+  const make = async (e: FormEvent) => {
+    e.preventDefault();
+    const text = idea.replace(/\s+/g, " ").trim();
+    if (text.length < 2) return setError("short");
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/own-power", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ idea: text }) });
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; power?: unknown; code?: string } | null;
+      const power = data?.ok ? cleanOwn(data.power) : null;
+      if (power) {
+        onMade(power);
+        setIdea("");
+      } else {
+        setError(OWN_ERRORS.includes(data?.code as OwnError) ? (data!.code as OwnError) : "failed");
+      }
+    } catch {
+      setError("failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border-2 border-border bg-background p-4" data-creator-own>
+      <Heading id="creator.own.title" hint="creator.own.hint" />
+      {own && (
+        <div className="flex items-start gap-3 rounded-xl border-2 border-foreground bg-card px-3 py-3" data-creator-own-power>
+          <FighterDot def={ownDot(own)} className="mt-1 size-5" />
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-foreground">{own.name}</span>
+              <span className="shrink-0 rounded-full border-2 border-foreground px-1.5 text-xs font-extrabold text-foreground">
+                <Text id="creator.mainPower" />
+              </span>
+            </div>
+            {own.about && <p className="text-sm text-foreground-secondary">{own.about}</p>}
+            <Text id="creator.own.soundsLike" vars={{ power: DEF_BY_ID[own.base].power }} as="p" className="text-sm text-muted-foreground" />
+          </div>
+          <Button type="button" variant="ghost" size="sm" onClick={onRemove} aria-label={removeAria} title={removeAria} className="shrink-0">
+            <PiXBold className="size-4" aria-hidden />
+            <Text id="creator.own.remove" />
+          </Button>
+        </div>
+      )}
+      <form onSubmit={make} className="flex flex-col gap-2">
+        <Label htmlFor="creator-own-idea" className="text-xs font-extrabold uppercase tracking-[0.08em] text-muted-foreground">
+          <Text id="creator.own.label" />
+        </Label>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            id="creator-own-idea"
+            value={idea}
+            maxLength={60}
+            placeholder={placeholder}
+            autoComplete="off"
+            disabled={busy}
+            onChange={(e) => {
+              setIdea(e.target.value);
+              setError(null);
+            }}
+            className="sm:flex-1"
+          />
+          <Button type="submit" disabled={busy} className="shrink-0" data-creator-own-make>
+            <PiSparkleBold className={cn("size-5", busy && "motion-safe:animate-pulse")} aria-hidden />
+            <Text id={busy ? "creator.own.making" : own ? "creator.own.remake" : "creator.own.make"} />
+          </Button>
+        </div>
+        {willDrop && <Text id="creator.own.replaceNote" as="p" className="text-sm text-muted-foreground" />}
+        <div aria-live="polite">
+          {error && <Text id={`creator.own.error.${error}` as StringKey} as="p" role="alert" className="text-sm text-error" />}
+        </div>
+      </form>
+    </div>
+  );
+}
+
 /** The creator sheet. `powers` are the powers on offer (the fighters plus any quest or new-gen fighter you've earned). */
 export function CharacterCreator({ open, onOpenChange, saved, powers, onSaved }: {
   open: boolean;
@@ -131,10 +226,11 @@ export function CharacterCreator({ open, onOpenChange, saved, powers, onSaved }:
     setDraft((d) => ({ ...d, ...patch }));
     setSavedNote(null);
   };
+  const count = powerCount(draft);
   const togglePower = (p: Power) => {
     const has = draft.powers.includes(p);
-    if (has && draft.powers.length === 1) return;
-    if (!has && draft.powers.length >= MAX_CUSTOM_POWERS) return;
+    if (has && count === 1) return;
+    if (!has && count >= MAX_CUSTOM_POWERS) return;
     set({ powers: has ? draft.powers.filter((x) => x !== p) : [...draft.powers, p] });
   };
   const name = draft.name.replace(/\s+/g, " ").trim();
@@ -144,7 +240,17 @@ export function CharacterCreator({ open, onOpenChange, saved, powers, onSaved }:
     setSavedNote(name);
     onSaved(id);
   };
-  const full = draft.powers.length >= MAX_CUSTOM_POWERS;
+  const full = count >= MAX_CUSTOM_POWERS;
+  const madeOwn = (own: OwnPower) => {
+    setDraft((d) => ({ ...d, own, powers: d.powers.slice(0, MAX_CUSTOM_POWERS - 1) }));
+    setSavedNote(null);
+  };
+  // without another power, the invented one leaves behind the element it was built on
+  const removeOwn = () => {
+    setDraft((d) => ({ ...d, own: undefined, powers: d.powers.length ? d.powers : d.own ? [d.own.base] : ["pyro"] }));
+    setSavedNote(null);
+  };
+  const ownSwatch = draft.own ? ownDot(draft.own) : null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -172,12 +278,13 @@ export function CharacterCreator({ open, onOpenChange, saved, powers, onSaved }:
             <div className="flex flex-wrap items-baseline gap-2">
               <Heading id="creator.powersTitle" hint="creator.powersHint" />
             </div>
-            <Text id="creator.powersCount" vars={{ count: draft.powers.length, max: MAX_CUSTOM_POWERS }} as="p" className="text-sm text-muted-foreground tabular-nums" />
+            <OwnPowerBox own={draft.own} willDrop={!draft.own && full} onMade={madeOwn} onRemove={removeOwn} />
+            <Text id="creator.powersCount" vars={{ count, max: MAX_CUSTOM_POWERS }} as="p" className="text-sm text-muted-foreground tabular-nums" />
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {powers.map((p) => {
                 const d = DEF_BY_ID[p];
-                const at = draft.powers.indexOf(p);
-                const on = at >= 0;
+                const at = draft.powers.indexOf(p) + (draft.own && draft.powers.includes(p) ? 1 : 0);
+                const on = draft.powers.includes(p);
                 return (
                   <Choice key={p} on={on} disabled={!on && full} onClick={() => togglePower(p)}>
                     <FighterDot def={d} className="size-5" />
@@ -243,7 +350,7 @@ export function CharacterCreator({ open, onOpenChange, saved, powers, onSaved }:
             <ul className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
               {def.moves.map((m) => (
                 <li key={m.id} className="flex items-center gap-2 text-foreground">
-                  <FighterDot def={DEF_BY_ID[m.power ?? def.id]} className="size-3" />
+                  <FighterDot def={ownSwatch && m.id.startsWith("own-") ? ownSwatch : DEF_BY_ID[m.power ?? def.id]} className="size-3" />
                   <span className="min-w-0 truncate">{m.name}</span>
                 </li>
               ))}
